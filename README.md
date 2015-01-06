@@ -1,0 +1,1 @@
+This project contains a toolkit for writing functional tests in Python. It is designed to be a flexible starting point from which a larger test suite can be built. It attempts to facilitate the testing patterns used in functional testing which are not often found in unit-test frameworks like Python's unittest package.

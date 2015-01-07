@@ -23,9 +23,14 @@ class TestRunner():
             if full_class_name:
                 class_name = full_class_name.split('.')[-1]
                 module_name = '.'.join(full_class_name.split('.')[0:-1])
+                class_path = full_class_name.split('.')[1:]
                 module = __import__(module_name)
-                class_ = getattr(module, class_name)
-                self.tests.append((class_, class_.load_tests()))
+
+                # Get the class from the module object
+                for part in class_path:
+                    module = getattr(module, part)
+
+                self.tests.append((module, module.load_tests()))
 
     def run_tests(self):
         """Runs the tests that have been added to this TestRunner and reports the 

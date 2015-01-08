@@ -3,70 +3,36 @@ import sys
 import traceback
 import os
 from loggers.simple_text_logger import SimpleTextLogger
+from test_workers import WorkPool
+from test_workers import WorkManager
 
 class TestRunner():
     """ A class used to run TestSet tests."""
     tests = [] # Should be a list of tuples like [(class, [func1, func2]) ...]
+    work_pool = None
+    work_manager = None
     logger = None
 
-    def __init__(self, logger):
+    def __init__(self, logger, number_of_threads=1):
         """Initializes the TestRunner. The logger should be a subclass of 
         TestLogger."""
         self.logger = logger
+        self.work_pool = WorkPool()
+        self.work_manager = WorkManager(self.work_pool, self.logger, number_of_threads)
 
     def add_tests(self, *class_names):
         """Takes a list of fully-qualified class names and loads tests from those 
-        classes. The loaded tests are added to the list of tests that this 
+        classes. The loaded tests are added to the pool of tests that this 
         TestRunner will execute. The classes should be subclasses of TestSet and 
         must implement the 'load_tests' method."""
-        for full_class_name in class_names:
-            if full_class_name:
-                class_name = full_class_name.split('.')[-1]
-                module_name = '.'.join(full_class_name.split('.')[0:-1])
-                class_path = full_class_name.split('.')[1:]
-                module = __import__(module_name)
-
-                # Get the class from the module object
-                for part in class_path:
-                    module = getattr(module, part)
-
-                self.tests.append((module, module.load_tests()))
+        for class_name in class_names:
+            if class_name:
+                self.work_pool.add_test_class_by_name(class_name)
 
     def run_tests(self):
         """Runs the tests that have been added to this TestRunner and reports the 
         results to the given TestLogger."""
-        self.logger.startingTests()
-
-        for (class_, functions) in self.tests:
-            instance = class_()
-            classname = class_.__name__
-
-            # Try to call the class's setup method
-            try:
-                instance.setup()
-            except AttributeError:
-                pass # this is fine
-
-            # Run all the test functions
-            for func in functions:
-                self.logger.runningTestFunction(classname, func)
-
-                try: 
-                    func(instance)
-                except:
-                    e = sys.exc_info()[0]
-                    tb = traceback.format_exc()
-                    self.logger.foundException(classname, func, e, tb)
-
-                self.logger.finishedTestFunction(classname, func)
-
-            # Try to call the class's teardown method
-            try:
-                instance.teardown()
-            except AttributeError:
-                pass # this is fine
-
-        self.logger.finishedTests()
+        self.work_manager.run_tests()
 
 def main():
     """The command-line interface for the TestRunner class."""
@@ -90,6 +56,16 @@ def main():
         help="""A configuration file which can be used to specify longer lists of 
         tests. The file should contain one fully-qualified class name on each line.
         The configuration file replaces the 'class_name' command-line arguments.""",
+    )
+
+    parser.add_argument(
+        "-t",
+        "--number-of-threads",
+        metavar="NUMBER_OF_THREADS",
+        type=int,
+        default=1,
+        help="""An integer specifying the number of threads the tests should be run
+        in. Defaults to 1.""",
     )
 
     parser.add_argument(
@@ -121,7 +97,7 @@ def main():
         logger = SimpleTextLogger()
     logger.set_log_level(args.log_level)
 
-    runner = TestRunner(logger)
+    runner = TestRunner(logger, args.number_of_threads)
     runner.add_tests(*test_classes) # '*' just unwraps the list
 
     # Run the tests

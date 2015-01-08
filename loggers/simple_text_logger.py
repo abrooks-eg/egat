@@ -12,7 +12,7 @@ class SimpleTextLogger(TestLogger):
         pass
 
     def startingTests(self):
-        self.out.write("Starting tests...\n")
+        pass
     
     def finishedTests(self):
         pass

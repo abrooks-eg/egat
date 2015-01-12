@@ -3,7 +3,6 @@ import sys
 import traceback
 import os
 from loggers.simple_text_logger import SimpleTextLogger
-from test_workers import WorkPool
 from test_workers import WorkManager
 
 class TestRunner():
@@ -17,8 +16,7 @@ class TestRunner():
         """Initializes the TestRunner. The logger should be a subclass of 
         TestLogger."""
         self.logger = logger
-        self.work_pool = WorkPool()
-        self.work_manager = WorkManager(self.work_pool, self.logger, number_of_threads)
+        self.work_manager = WorkManager(self.logger, number_of_threads)
 
     def add_tests(self, *class_names):
         """Takes a list of fully-qualified class names and loads tests from those 
@@ -27,7 +25,7 @@ class TestRunner():
         must implement the 'load_tests' method."""
         for class_name in class_names:
             if class_name:
-                self.work_pool.add_test_class_by_name(class_name)
+                self.work_manager.add_test_class_by_name(class_name)
 
     def run_tests(self):
         """Runs the tests that have been added to this TestRunner and reports the 

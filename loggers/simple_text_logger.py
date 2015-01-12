@@ -29,6 +29,9 @@ class SimpleTextLogger(TestLogger):
         else:
             self.out.write("S\n")
 
+    def skippingTestFunction(self, classname, func):
+        pass
+
     def foundException(self, classname, func, e, tb):
         self.current_func_failed = True
         self.current_exception = e

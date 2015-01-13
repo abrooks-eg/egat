@@ -1,4 +1,6 @@
 import sys
+import datetime
+import os
 from loggers.test_logger import TestLogger
 from loggers.test_logger import LogLevel
 from Queue import Queue
@@ -40,17 +42,18 @@ class SimpleTextLogger(TestLogger):
     skipped_msg = "Skipped"
     output_queue = None
 
-    def __init__(self, out=sys.stdout, log_level=LogLevel.ERROR):
-        TestLogger.__init__(self, out, log_level)
+    def startingTests(self):
+        # Set up the log file
+        start_time = datetime.datetime.now().strftime("%m-%d-%y %H.%M.%S")
+        self.log_dir += "/Test Run %s" % start_time
+        os.mkdir(self.log_dir)
+        log_name = "%s/log.txt" % self.log_dir
+        self.out = open(log_name, 'w')
+
+        # Set up the printer
         self.output_queue = Queue()
         self.printer = _Printer(self.output_queue, self.out)
         self.printer.start()
-
-    def set_log_level(self, log_level):
-        pass
-
-    def startingTests(self):
-        pass
     
     def finishedTests(self):
         self.printer.tests_running = False
@@ -62,7 +65,7 @@ class SimpleTextLogger(TestLogger):
         self.current_exception = None
         self.current_traceback = None
 
-    def finishedTestFunction(self, classname, func):
+    def finishedTestFunction(self, classname, func, browser=None):
         func_str = SimpleTextLogger.format_function_name(classname, func)
         msg = ""
         if self.current_func_failed:
@@ -74,17 +77,32 @@ class SimpleTextLogger(TestLogger):
             (func_str, msg, self.current_traceback)
         )
 
+        if self.log_level == LogLevel.DEBUG:
+            self.log_debug_info(browser, classname, func)
+
     def skippingTestFunction(self, classname, func):
         func_str = SimpleTextLogger.format_function_name(classname, func)
         self.output_queue.put((func_str, self.skipped_msg, None))
 
-    def foundException(self, classname, func, e, tb):
+    def foundException(self, classname, func, e, tb, browser=None):
         self.current_func_failed = True
         self.current_exception = e
         self.current_traceback = tb
+        if self.log_level == LogLevel.ERROR:
+            self.log_debug_info(browser, classname, func)
 
     @staticmethod
     def format_function_name(classname, func):
         """Takes a class name and a function from that class and returns a string
         representing the given function."""
-        return "%s.%s " % (classname, func.__name__)
+        return "%s.%s" % (classname, func.__name__)
+
+    def log_debug_info(self, browser, classname, func):
+        """Takes a Selenium Webdriver (or None) and a classname, and function 
+        object. If the browser object is not none it will take a screenshot of the 
+        browser window and save the page source to the log_dir."""
+        if browser:
+            func_str = SimpleTextLogger.format_function_name(classname, func)
+            browser.save_screenshot('%s/%s.png' % (self.log_dir, func_str))
+            with open('%s/%s.html' % (self.log_dir, func_str), 'w') as f:
+                f.write(browser.page_source.encode('utf8'))

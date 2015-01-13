@@ -10,11 +10,12 @@ class WorkManager():
     work_pool = None
     logger = None
     workers = None
+    selenium_debugging_enabled = None
     cur_resources = None
     # Execution groups that have failed. List items can be any type.
     failed_ex_groups = None 
 
-    def __init__(self, logger, thread_count=1):
+    def __init__(self, logger, thread_count=1, selenium_debugging=False):
         """Takes a WorkPool object, a TestLogger, and optionally the number of 
         threads that should be used to execute tests."""
         self.thread_count = thread_count
@@ -23,6 +24,7 @@ class WorkManager():
         self.workers = []
         self.cur_resources = set()
         self.failed_ex_groups = set()
+        self.selenium_debugging_enabled = selenium_debugging
 
     def add_test_class_by_name(self, full_class_name):
         """Takes a fully-qualified class name for a TestSet subclass and adds the 
@@ -86,10 +88,8 @@ class WorkerThread(Thread):
         instance = node.test_class()
 
         # Try to call the class's setup method
-        try:
+        if hasattr(instance, 'setup') and callable(instance.setup):
             instance.setup()
-        except AttributeError:
-            pass # this is fine
 
         # Run all the test functions
         for func in node.test_funcs:
@@ -97,6 +97,12 @@ class WorkerThread(Thread):
             if self.has_failed_ex_groups(node.test_class, func):
                 self.logger.skippingTestFunction(classname, func)
                 continue
+
+            # An optional Selenium Webdriver object that the logger may use to 
+            # extract debugging information from.
+            browser = None
+            if self.manager.selenium_debugging_enabled:
+                browser = getattr(instance, 'browser', None)
 
             self.logger.runningTestFunction(classname, func)
             try: 
@@ -107,15 +113,15 @@ class WorkerThread(Thread):
                 self.manager.add_failed_ex_groups(
                     self.get_ex_groups(func) + self.get_ex_groups(node.test_class)
                 )
-                self.logger.foundException(classname, func, e, tb)
 
-            self.logger.finishedTestFunction(classname, func)
+
+                self.logger.foundException(classname, func, e, tb, browser=browser)
+
+            self.logger.finishedTestFunction(classname, func, browser=browser)
 
         # Try to call the class's teardown method
-        try:
+        if hasattr(instance, 'teardown') and callable(instance.teardown):
             instance.teardown()
-        except AttributeError:
-            pass # this is fine
 
     def has_failed_ex_groups(self, test_class, func):
         """Takes a classname and a function object in that class and checks the 

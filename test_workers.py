@@ -36,6 +36,9 @@ class WorkManager():
             worker = WorkerThread(self, self.work_pool, self.logger)
             worker.start()
             self.workers.append(worker)
+
+        for worker in self.workers:
+            worker.join()
         self.logger.finishedTests()
 
     def add_failed_ex_groups(self, failed_ex_groups):

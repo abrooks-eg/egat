@@ -43,12 +43,15 @@ class SimpleTextLogger(TestLogger):
     output_queue = None
 
     def startingTests(self):
-        # Set up the log file
-        start_time = datetime.datetime.now().strftime("%m-%d-%y %H.%M.%S")
-        self.log_dir += "/Test Run %s" % start_time
-        os.mkdir(self.log_dir)
-        log_name = "%s/log.txt" % self.log_dir
-        self.out = open(log_name, 'w')
+        if self.log_dir:
+            # Set up the log file
+            start_time = datetime.datetime.now().strftime("%m-%d-%y %H.%M.%S")
+            self.log_dir += "/Test Run %s" % start_time
+            os.mkdir(self.log_dir)
+            log_name = "%s/log.txt" % self.log_dir
+            self.out = open(log_name, 'w')
+        else:
+            self.out = sys.stdout
 
         # Set up the printer
         self.output_queue = Queue()
@@ -103,6 +106,8 @@ class SimpleTextLogger(TestLogger):
         browser window and save the page source to the log_dir."""
         if browser:
             func_str = SimpleTextLogger.format_function_name(classname, func)
-            browser.save_screenshot('%s/%s.png' % (self.log_dir, func_str))
-            with open('%s/%s.html' % (self.log_dir, func_str), 'w') as f:
+            path = self.log_dir if self.log_dir else "."
+            browser.save_screenshot('%s/%s.png' % (path, func_str))
+            with open('%s/%s.html' % (path, func_str), 'a') as f:
                 f.write(browser.page_source.encode('utf8'))
+

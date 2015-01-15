@@ -14,7 +14,7 @@ class TestLogger():
     log_level = None
     log_dir = None
 
-    def __init__(self, log_dir=".", log_level=LogLevel.ERROR):
+    def __init__(self, log_dir=None, log_level=LogLevel.ERROR):
         """Takes a directory that the logger will write to and optionally a 
         LogLevel."""
         self.log_dir = log_dir

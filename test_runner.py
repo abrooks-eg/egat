@@ -5,6 +5,7 @@ import argparse
 import sys
 import traceback
 import os
+import json
 
 def main():
     """The command-line interface for the TestRunner class."""
@@ -49,7 +50,7 @@ def main():
     )
 
     parser.add_argument(
-        'class_name',
+        'tests',
         type=str,
         nargs='*',
         help="""The fully qualified class names of the scripts you wish to run. The 
@@ -57,11 +58,9 @@ def main():
     )
 
     # Parse arguments
-    args = parser.parse_args()
-    test_classes = args.class_name
-    if args.config:
-        test_classes = open(args.config).read().split(os.linesep)
-    log_level = getattr(LogLevel, args.log_level)
+    args = parse_args(parser)
+    tests = args.tests
+    log_level = args.log_level
 
     # Set up the TestRunner and TestLogger
     if args.log:
@@ -71,10 +70,37 @@ def main():
     logger.set_log_level(log_level)
 
     runner = TestRunner(logger, args.number_of_threads)
-    runner.add_tests(*test_classes) # '*' just unwraps the list
+    runner.add_tests(*tests) 
 
     # Run the tests
     runner.run_tests()
+
+def parse_args(parser):
+    """Takes a argparse.ArgumentParser and uses it to parse the command-line
+    arguments to this script, and parse the given configuration file (if any). 
+    Returns a Namespace containing the resulting options. This method will use the 
+    configuration file parameters if any exist, otherwise it will use the 
+    command-line arguments."""
+    # Parse sys.argv
+    cli_args = parser.parse_args()
+
+    if cli_args.config:
+        # Parse the configuration file
+        config_file = open(cli_args.config, 'r')
+        config_json = json.load(config_file)
+        config_opts = config_json.get('options', {})
+
+        # Turn JSON options into a flat list of strings for the parser
+        args = reduce(lambda l, t: l + [str(t[0]), str(t[1])], config_opts.items(), [])
+        args = filter(lambda x: x is not None, args)
+
+        # Pass the configuration file options to the parser
+        config_args = parser.parse_args(args=args)
+        config_args.tests = config_json.get('tests', [])
+
+        return config_args
+    else:
+        return cli_args
 
 if __name__ == "__main__":
     main()

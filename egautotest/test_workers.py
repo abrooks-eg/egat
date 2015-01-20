@@ -165,11 +165,8 @@ class WorkPool():
         class_name = full_class_name.split('.')[-1]
         module_name = '.'.join(full_class_name.split('.')[0:-1])
         class_path = full_class_name.split('.')[1:]
-        test_module = __import__(module_name)
-
-        # Get the class from the module object
-        for part in class_path:
-            test_module = getattr(test_module, part)
+        root_module = __import__(module_name)
+        test_module = reduce(lambda x, y: getattr(x, y), class_path, root_module)
 
         # Check to see if this is an ordered or unordered set of tests
         if test_module.execution_order == ExecutionOrder.UNORDERED:

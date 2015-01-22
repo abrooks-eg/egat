@@ -3,51 +3,72 @@ from egautotest.testset import ExecutionOrder
 from threading import Thread
 import sys
 import traceback
+import collections
 
 class WorkManager():
     """This class manages the WorkerThreads that assist in test execution."""
     thread_count = None
-    work_pool = None
+    work_pools = None
     logger = None
     workers = None
     selenium_debugging_enabled = None
-    cur_resources = None
-    # Execution groups that have failed. List items can be any type.
-    failed_ex_groups = None 
 
     def __init__(self, logger, thread_count=1, selenium_debugging=False):
         """Takes a WorkPool object, a TestLogger, and optionally the number of 
         threads that should be used to execute tests."""
         self.thread_count = thread_count
-        self.work_pool = WorkPool(self)
+        self.work_pools = []
         self.logger = logger
         self.workers = []
-        self.cur_resources = set()
         self.failed_ex_groups = set()
         self.selenium_debugging_enabled = selenium_debugging
 
-    def add_test_class_by_name(self, full_class_name):
-        """Takes a fully-qualified class name for a TestSet subclass and adds the 
-        tests in the TestSet to the WorkPool."""
-        self.work_pool.add_test_class_by_name(full_class_name)
+    def add_tests(self, tests):
+        # Figure out whether the user has defined their own threads
+        user_defined_threads = False
+        for test in tests:
+            if not isinstance(test, basestring) and isinstance(test, collections.Sequence):
+                user_defined_threads = True
+                break
+
+        # If they have, add each entry to a new WorkPool
+        if user_defined_threads:
+            for thread in tests:
+                self.get_work_pool().add_tests(thread)
+        else:
+            work_pool = self.get_work_pool()
+            for test in tests:
+                work_pool.add_tests(test)
+                
+    def get_work_pool(self):
+        """Returns a new WorkPool instance attached to this WorkManager. The WorkPool
+        can have tests added to it which will be run when 'run_tests()' is called
+        on this WorkManager."""
+        work_pool = WorkPool(self)
+        self.work_pools.append(work_pool)
+        return work_pool
 
     def run_tests(self):
-        """Instructs this WorkManager to run the tests in its WorkPool."""
+        """Instructs this WorkManager to run the tests in its WorkPools."""
         self.logger.startingTests()
-        for _ in range(self.thread_count):
-            worker = WorkerThread(self, self.work_pool, self.logger)
-            worker.start()
-            self.workers.append(worker)
+        if len(self.work_pools) > 1:
+            # User has defined threads, run in manual mode
+            for work_pool in self.work_pools:
+                work_pool.user_defined_threads = True
+                worker = WorkerThread(self, work_pool, self.logger)
+                worker.start()
+                self.workers.append(worker)
+
+        elif len(self.work_pools) == 1:
+            # We only have one big WorkPool, run in automatic mode
+            for _ in range(self.thread_count):
+                worker = WorkerThread(self, self.work_pools[0], self.logger)
+                worker.start()
+                self.workers.append(worker)
 
         for worker in self.workers:
             worker.join()
         self.logger.finishedTests()
-
-    def add_failed_ex_groups(self, failed_ex_groups):
-        """Takes a list of Execution Groups and adds them to the WorkManager's list
-        of failed Execution Groups."""
-        for group in failed_ex_groups:
-            self.failed_ex_groups.add(group)
 
 class WorkerThread(Thread):
     """This class draws work from the WorkPool and executes it."""
@@ -72,7 +93,7 @@ class WorkerThread(Thread):
                 self.run_tests_for_node(cur_node)
                 # Remove this nodes resources from the thread_manager
                 for resource in cur_node.resources:
-                    self.manager.cur_resources.remove(resource)
+                    self.work_pool.cur_resources.remove(resource)
 
     def run_tests_for_node(self, node):
         """Takes a WorkNode and runs the tests it contains."""
@@ -110,7 +131,7 @@ class WorkerThread(Thread):
             except:
                 e = sys.exc_info()[0]
                 tb = traceback.format_exc()
-                self.manager.add_failed_ex_groups(
+                self.work_pool.add_failed_ex_groups(
                     self.get_ex_groups(func) + self.get_ex_groups(node.test_class)
                 )
 
@@ -125,14 +146,14 @@ class WorkerThread(Thread):
 
     def has_failed_ex_groups(self, test_class, func):
         """Takes a classname and a function object in that class and checks the 
-        WorkManager to see if any of the Execution Groups the function or class is a
+        WorkPool to see if any of the Execution Groups the function or class is a
         member of have failed. Returns True if the function is a member of a failed 
         Execution Group and False otherwise."""
         execution_groups = set(
             self.get_ex_groups(func) + self.get_ex_groups(test_class)
         )
         for ex_group in execution_groups:
-            if ex_group in self.manager.failed_ex_groups:
+            if ex_group in self.work_pool.failed_ex_groups:
                 return True
 
         return False
@@ -152,12 +173,33 @@ class WorkPool():
     next_node_id = None
     lock = None
     work_manager = None
+    user_defined_threads = None
+    # Execution groups that have failed. List items can be any type.
+    failed_ex_groups = None 
+    cur_resources = None
 
-    def __init__(self, work_manager):
+
+    def __init__(self, work_manager, user_defined_threads=False):
         self.graph = []
         self.next_node_id = 1
         self.lock = Lock()
         self.work_manager = work_manager
+        self.user_defined_threads = user_defined_threads
+        self.failed_ex_groups = set()
+        self.cur_resources = set()
+
+    def add_tests(self, tests):
+        """Takes a variable 'tests' and adds the tests classes contained to this 
+        WorkPool's work. 'tests' can be either a list of fully qualified class 
+        names or a single fully qualified class name."""
+        if not isinstance(tests, basestring) and isinstance(tests, collections.Sequence):
+            for class_name in tests:
+                self.add_test_class_by_name(class_name)
+        elif isinstance(tests, basestring):
+            class_name = tests
+            self.add_test_class_by_name(class_name)
+        else:
+            raise Exception("Expected iterable or str but got %s" % type(tests))
 
     def add_test_class_by_name(self, full_class_name):
         """Takes a fully-qualified class name for a TestSet subclass and adds the 
@@ -177,6 +219,12 @@ class WorkPool():
             # if it is ordered then the test functions must all be run together
             self.add_node(test_module, test_module.load_tests())
 
+    def add_failed_ex_groups(self, failed_ex_groups):
+        """Takes a list of Execution Groups and adds them to this WorkPool's list
+        of failed Execution Groups."""
+        for group in failed_ex_groups:
+            self.failed_ex_groups.add(group)
+
     def add_node(self, test_class, test_funcs):
         """Takes a TestSet subclass object and a list of function objects in that 
         class and adds them as a node in the WorkPool's graph. The class will be 
@@ -184,14 +232,15 @@ class WorkPool():
         new_node = WorkNode(self.next_node_id, test_class, test_funcs)
         self.next_node_id += 1
 
-        # Look for conflicts with this class's SharedResources
-        # Conflicts are encoded as edges in the graph
-        for node in self.graph:
-            for resource in new_node.resources:
-                if resource in node.resources:
-                    # Add an edge
-                    node.edges.add(new_node.id)
-                    new_node.edges.add(node.id)
+        if not self.user_defined_threads:
+            # Look for conflicts with this class's SharedResources
+            # Conflicts are encoded as edges in the graph
+            for node in self.graph:
+                for resource in new_node.resources:
+                    if resource in node.resources:
+                        # Add an edge
+                        node.edges.add(new_node.id)
+                        new_node.edges.add(node.id)
 
         self.graph.append(new_node)
 
@@ -214,13 +263,13 @@ class WorkPool():
         for node in self.graph:
             all_resources_available = True
             for resource in node.resources:
-                if resource in self.work_manager.cur_resources:
+                if resource in self.cur_resources:
                     all_resources_available = False
             
             if all_resources_available:
                 available_node = node
                 for resource in available_node.resources:
-                    self.work_manager.cur_resources.add(resource)
+                    self.cur_resources.add(resource)
                 self.remove_node(node)
                 break
 
@@ -239,8 +288,9 @@ class WorkNode():
     resources = None # a list of SharedResource classes this node needs
     test_class = None # The class containing tests for this node
     test_funcs = None # The tests functions for this node
+    user_defined_threads = None
 
-    def __init__(self, id, test_class, test_funcs):
+    def __init__(self, id, test_class, test_funcs, user_defined_threads=False):
         """Takes a node id (must be unique), a TestSet subclass, and a list of test 
         methods in that TestSet subclass."""
         self.id = id
@@ -248,12 +298,14 @@ class WorkNode():
         self.resources = set()
         self.test_class = test_class
         self.test_funcs = test_funcs
+        self.user_defined_threads = user_defined_threads
 
-        # Add class resources
-        class_resources = getattr(test_class, 'resources', [])
-        self.resources = self.resources.union(set(class_resources))
+        if not user_defined_threads:
+            # Add class resources
+            class_resources = getattr(test_class, 'resources', [])
+            self.resources = self.resources.union(set(class_resources))
 
-        # Add function resources
-        for func in test_funcs:
-            for resource in getattr(func, 'resources', []):
-                self.resources.add(resource)
+            # Add function resources
+            for func in test_funcs:
+                for resource in getattr(func, 'resources', []):
+                    self.resources.add(resource)

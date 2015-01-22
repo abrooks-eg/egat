@@ -70,7 +70,7 @@ def main():
     logger.set_log_level(log_level)
 
     runner = TestRunner(logger, args.number_of_threads)
-    runner.add_tests(*tests) 
+    runner.add_tests(tests) 
 
     # Run the tests
     runner.run_tests()

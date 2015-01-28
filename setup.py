@@ -2,7 +2,8 @@ from distutils.core import setup
 setup(
     name = 'egautotest',
     packages = ['egautotest'], # this must be the same as the name above
-    version = '0.1',
+    scripts = ['test_runner.py'],
+    version = '0.1.4',
     description = 'An automated testing toolkit',
     author = 'E-gineering LLC',
     author_email = 'eg.pypi@e-gineering.com', # contact email

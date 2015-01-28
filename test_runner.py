@@ -1,3 +1,4 @@
+#!python
 from egautotest.loggers.simple_text_logger import SimpleTextLogger
 from egautotest.loggers.test_logger import LogLevel
 from egautotest.test_runner import TestRunner

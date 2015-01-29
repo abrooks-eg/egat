@@ -54,8 +54,8 @@ def main():
         'tests',
         type=str,
         nargs='*',
-        help="""The fully qualified class names of the scripts you wish to run. The 
-        classes should be subclasses of TestSet."""
+        help="""The fully qualified module, class, or function names of the scripts 
+        you wish to run. Classes should be subclasses of TestSet."""
     )
 
     # Parse arguments

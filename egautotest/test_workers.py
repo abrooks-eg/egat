@@ -94,7 +94,7 @@ class WorkerThread(Thread):
 
     def run(self):
         """Called when this WorkerThread is started."""
-        while self.work_pool.graph:
+        while self.work_pool.work_nodes:
             cur_node = self.work_pool.next_available_node()
 
             if cur_node:
@@ -177,7 +177,7 @@ class WorkerThread(Thread):
 
 class WorkPool():
     """A class designed to hold a number of tests and their dependencies."""
-    graph = None
+    work_nodes = None
     next_node_id = None
     lock = None
     work_manager = None
@@ -188,7 +188,7 @@ class WorkPool():
 
 
     def __init__(self, work_manager, user_defined_threads=False):
-        self.graph = []
+        self.work_nodes = []
         self.next_node_id = 1
         self.lock = Lock()
         self.work_manager = work_manager
@@ -305,40 +305,24 @@ class WorkPool():
 
     def add_node(self, test_class, test_funcs):
         """Takes a TestSet subclass object and a list of function objects in that 
-        class and adds them as a node in the WorkPool's graph. The class will be 
+        class and adds them as a node in the WorkPool's work. The class will be 
         instantiated and the functions called as tests."""
         new_node = WorkNode(self.next_node_id, test_class, test_funcs)
         self.next_node_id += 1
-
-        if not self.user_defined_threads:
-            # Look for conflicts with this class's SharedResources
-            # Conflicts are encoded as edges in the graph
-            for node in self.graph:
-                for resource in new_node.resources:
-                    if resource in node.resources:
-                        # Add an edge
-                        node.edges.add(new_node.id)
-                        new_node.edges.add(node.id)
-
-        self.graph.append(new_node)
+        self.work_nodes.append(new_node)
 
     def remove_node(self, node_to_remove):
-        """Takes a WorkNode object that is in this WorkPool's graph and removes it 
-        from the graph."""
-        self.graph.remove(node_to_remove)
-        for target_node_id in node_to_remove.edges:
-            for node in self.graph:
-                if node.id == target_node_id:
-                    node.edges.remove(node_to_remove.id)
+        """Takes a WorkNode object that is in this WorkPool's work and removes it."""
+        self.work_nodes.remove(node_to_remove)
 
     def next_available_node(self):
         """Finds and returns the next available node of work, and removes it from 
-        the graph. This method will block until work is available or the graph is
-        empty."""
+        the work pool. This method will block until work is available or the work 
+        pool is empty."""
         self.lock.acquire()
 
         available_node = None
-        for node in self.graph:
+        for node in self.work_nodes:
             all_resources_available = True
             for resource in node.resources:
                 if resource in self.cur_resources:
@@ -356,13 +340,12 @@ class WorkPool():
         return available_node
 
 class WorkNode():
-    """A class that represents a node in the graph of a WorkPool. Each node 
+    """A class that represents a node in the work of a WorkPool. Each node 
     represents a unit of work (tests to be run) and defines the resources it needs 
     to share with other nodes (SharedResources). Each node has edges that connect 
     it to other nodes that share its SharedResources and thus cannot be run at the 
     same time."""
     id = None # this node's unique id
-    edges = None # a list of other node ids that this node shares an edge with
     resources = None # a list of SharedResource classes this node needs
     test_class = None # The class containing tests for this node
     test_funcs = None # The tests functions for this node
@@ -372,7 +355,6 @@ class WorkNode():
         """Takes a node id (must be unique), a TestSet subclass, and a list of test 
         methods in that TestSet subclass."""
         self.id = id
-        self.edges = set()
         self.resources = set()
         self.test_class = test_class
         self.test_funcs = test_funcs

@@ -3,10 +3,6 @@ from egautotest.loggers.simple_text_logger import SimpleTextLogger
 from egautotest.loggers.test_logger import LogLevel
 from egautotest.test_runner import TestRunner
 from egautotest.test_runner import ArgumentParser
-import sys
-import traceback
-import os
-import json
 
 def main():
     """The command-line interface for the TestRunner class."""

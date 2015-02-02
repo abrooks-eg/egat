@@ -61,16 +61,18 @@ class WorkManager():
         self.logger.startingTests()
         if len(self.work_pools) > 1:
             # User has defined threads, run in manual mode
+            i = 0
             for work_pool in self.work_pools:
                 work_pool.user_defined_threads = True
-                worker = WorkerThread(self, work_pool, self.logger)
+                worker = WorkerThread(self, work_pool, self.logger, thread_num=i)
                 worker.start()
                 self.workers.append(worker)
+                i += 1
 
         elif len(self.work_pools) == 1:
             # We only have one big WorkPool, run in automatic mode
-            for _ in range(self.thread_count):
-                worker = WorkerThread(self, self.work_pools[0], self.logger)
+            for i in range(self.thread_count):
+                worker = WorkerThread(self, self.work_pools[0], self.logger, thread_num=i)
                 worker.start()
                 self.workers.append(worker)
 
@@ -84,13 +86,15 @@ class WorkerThread(Thread):
     work_pool = None
     logger = None
     cur_node = None
+    thread_num = None
 
-    def __init__(self, manager, work_pool, logger):
+    def __init__(self, manager, work_pool, logger, thread_num=None):
         """Requires a WorkManager, a WorkPool, and a TestLogger."""
         super(WorkerThread, self).__init__()
         self.manager = manager
         self.work_pool = work_pool
         self.logger = logger
+        self.thread_num = thread_num
 
     def run(self):
         """Called when this WorkerThread is started."""
@@ -111,7 +115,7 @@ class WorkerThread(Thread):
         if len(node.test_funcs) == 1:
             func = node.test_funcs[0]
             if self.has_failed_ex_groups(node.test_class, func):
-                self.logger.skippingTestFunction(classname, func)
+                self.logger.skippingTestFunction(classname, func, thread_num=self.thread_num)
                 return
                 
         instance = node.test_class()
@@ -124,7 +128,7 @@ class WorkerThread(Thread):
         for func in node.test_funcs:
             # Check for failed execution groups
             if self.has_failed_ex_groups(node.test_class, func):
-                self.logger.skippingTestFunction(classname, func)
+                self.logger.skippingTestFunction(classname, func, thread_num=self.thread_num)
                 continue
 
             # An optional Selenium Webdriver object that the logger may use to 
@@ -133,7 +137,7 @@ class WorkerThread(Thread):
             if self.manager.selenium_debugging_enabled:
                 browser = getattr(instance, 'browser', None)
 
-            self.logger.runningTestFunction(classname, func)
+            self.logger.runningTestFunction(classname, func, thread_num=self.thread_num)
             try: 
                 func(instance)
             except:
@@ -146,7 +150,9 @@ class WorkerThread(Thread):
 
                 self.logger.foundException(classname, func, e, tb, browser=browser)
 
-            self.logger.finishedTestFunction(classname, func, browser=browser)
+            self.logger.finishedTestFunction(classname, func, 
+                                             thread_num=self.thread_num, 
+                                             browser=browser)
 
         # Try to call the class's teardown method
         if hasattr(instance, 'teardown') and callable(instance.teardown):

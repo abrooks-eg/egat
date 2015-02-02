@@ -1,5 +1,6 @@
 from egautotest.test_workers import WorkManager
 import argparse
+import json
 
 class TestRunner():
     """ A class used to run TestSet tests."""

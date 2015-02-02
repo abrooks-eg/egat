@@ -32,17 +32,17 @@ class TestLogger():
         """Called by the test runner. Indicates that all tests are finished."""
         pass
 
-    def runningTestFunction(self, classname, func):
+    def runningTestFunction(self, classname, func, thread_num=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class is about to be run."""
         pass
 
-    def finishedTestFunction(self, classname, func, browser=None):
+    def finishedTestFunction(self, classname, func, thread_num=None, browser=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class is finished running."""
         pass
 
-    def skippingTestFunction(self, classname, func):
+    def skippingTestFunction(self, classname, func, thread_num=None):
         """Called by the test runner. Indicates that the given test function from
         the given class has been skipped."""
         pass

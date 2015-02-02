@@ -64,12 +64,12 @@ class SimpleTextLogger(TestLogger):
         self.printer.join()
         pass
 
-    def runningTestFunction(self, classname, func):
+    def runningTestFunction(self, classname, func, thread_num=None):
         self.current_func_failed = False
         self.current_exception = None
         self.current_traceback = None
 
-    def finishedTestFunction(self, classname, func, browser=None):
+    def finishedTestFunction(self, classname, func, thread_num=None, browser=None):
         func_str = SimpleTextLogger.format_function_name(classname, func)
         msg = ""
         if self.current_func_failed:
@@ -84,7 +84,7 @@ class SimpleTextLogger(TestLogger):
         if self.log_level == LogLevel.DEBUG:
             self.log_debug_info(browser, classname, func)
 
-    def skippingTestFunction(self, classname, func):
+    def skippingTestFunction(self, classname, func, thread_num=None):
         func_str = SimpleTextLogger.format_function_name(classname, func)
         self.output_queue.put((func_str, self.skipped_msg, None))
 
@@ -99,7 +99,7 @@ class SimpleTextLogger(TestLogger):
     def format_function_name(classname, func):
         """Takes a class name and a function from that class and returns a string
         representing the given function."""
-        return "%s.%s" % (classname, func.__name__)
+        return "%s.%s.%s" % (func.__module__, classname, func.__name__)
 
     def log_debug_info(self, browser, classname, func):
         """Takes a Selenium Webdriver (or None) and a classname, and function 

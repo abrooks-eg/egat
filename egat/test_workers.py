@@ -3,10 +3,13 @@ from egat.testset import ExecutionOrder
 from egat.testset import TestSet
 from threading import Thread
 import sys
+import os
 import traceback
 import collections
 import pkgutil
 import inspect
+
+sys.path.append(os.getcwd())
 
 class WorkManager():
     """This class manages the WorkerThreads that assist in test execution."""

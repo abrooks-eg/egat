@@ -1,4 +1,4 @@
-#!python
+#!/usr/bin/python
 from egat.loggers.simple_text_logger import SimpleTextLogger
 from egat.loggers.test_logger import LogLevel
 from egat.test_runner import TestRunner

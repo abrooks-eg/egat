@@ -14,6 +14,8 @@ class TestSet():
     before the tests in the set start and after they are finished, respectively."""
 
     execution_order = ExecutionOrder.UNORDERED
+    configuration = None
+    environment = None
 
     @classmethod
     def load_tests(cls):

@@ -10,6 +10,11 @@ def main():
     parser = ArgumentParser()
     args = parser.parse_args()
     tests = args.tests
+    test_json = {
+        "tests": args.tests,
+        "configuration": getattr(args, 'configuration', {}),
+        "environments": getattr(args, 'environments', []),
+    }
     log_level = args.log_level
 
     # Set up the TestRunner and TestLogger
@@ -19,8 +24,8 @@ def main():
         logger = SimpleTextLogger()
     logger.set_log_level(log_level)
 
-    runner = TestRunner(logger, args.number_of_threads)
-    runner.add_tests(tests) 
+    runner = TestRunner(logger, args.number_of_threads, user_defined_threads=args.user_defined_threads)
+    runner.add_tests(test_json) 
 
     # Run the tests
     runner.run_tests()

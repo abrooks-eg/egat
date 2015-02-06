@@ -27,28 +27,41 @@ class WorkManager():
         self.selenium_debugging_enabled = selenium_debugging
 
     def add_tests(self, tests):
-        """Takes a list of tests, where a test is a module name, class name, or 
-        function name, and adds them to WorkPools. The names should be 
-        fully-qualified like those passed to the 'import' command e.g. package.class 
-        or package.class.function then it is assumed that the user has specified 
-        which classes they would like to run in which threads. Each list will be run 
-        in its own thread."""
-        # Figure out whether the user has defined their own threads
-        user_defined_threads = False
-        for test in tests:
-            if not isinstance(test, basestring) and isinstance(test, collections.Sequence):
-                user_defined_threads = True
-                break
-
-        # If they have, add each entry to a new WorkPool
-        if user_defined_threads:
-            for thread in tests:
-                self.get_work_pool().add_tests(*thread)
+        """Takes a list of tests with the format: 
+            {
+                'test': 'test_name',
+                'configuration': {
+                    'var': 'val'
+                },
+                'environment': {
+                    'var': 'val'
+                }
+            }
+        and adds them to this WorkPool's work."""
+        # Find a WorkPool that is not a user defined thread
+        work_pool = None
+        auto_work_pools = filter(lambda w: not w.user_defined_thread, self.work_pools)
+        if auto_work_pools:
+            work_pool = auto_work_pools[0]
         else:
-            work_pool = self.get_work_pool()
-            work_pool.add_tests(*tests)
+            work_pool = self.get_new_work_pool()
 
-    def get_work_pool(self):
+        work_pool.add_tests(tests)
+            
+    def add_thread(self, threads, configuration={}):
+        """Like add_tests except the tests passed to this function will be run in 
+        their own thread. Their ResourceGroup restrictions will be ignored."""
+        for thread in threads:
+            work_pool = self.get_new_work_pool()
+            for test in thread:
+                json_test = {
+                    "test": test,
+                    "configuration": configuration,
+                }
+                work_pool.add_tests([json_test])
+        
+
+    def get_new_work_pool(self):
         """Returns a new WorkPool instance attached to this WorkManager. The WorkPool
         can have tests added to it which will be run when 'run_tests()' is called
         on this WorkManager."""
@@ -119,6 +132,8 @@ class WorkerThread(Thread):
                 return
                 
         instance = node.test_class()
+        setattr(instance, 'configuration', node.test_config)
+        setattr(instance, 'environment', node.test_env)
 
         # Try to call the class's setup method
         if hasattr(instance, 'setup') and callable(instance.setup):
@@ -231,10 +246,12 @@ class WorkPool():
                 return True
         return False
 
-    def add_tests(self, *tests):
-        """Takes a variable number of fully qualified module, class, or function 
-        names and adds them to this WorkPool's work.."""
-        for test_name in tests:
+    def add_tests(self, tests):
+        for test in tests:
+            test_name = test['test']
+            configuration = test.get('configuration', {})
+            environment = test.get('environment', {})
+
             is_module = False
             is_class = False
             is_fn = False
@@ -246,31 +263,31 @@ class WorkPool():
                     except ImportError: pass
 
             if is_module:
-                self.add_tests_from_module(test_name)
+                self.add_tests_from_module(test_name, config=configuration, env=environment)
             elif is_class:
-                self.add_test_class_by_name(test_name)
+                self.add_test_class_by_name(test_name, config=configuration, env=environment)
             elif is_fn:
-                self.add_test_function(test_name)
+                self.add_test_function(test_name, config=configuration, env=environment)
             else:
                 raise Exception(
                     """Expected fully-qualified module name, class name, or 
                     function, but got %s""" % (test_name)
                 )
 
-    def add_tests_from_module(self, test_name):
+    def add_tests_from_module(self, test_name, config={}, env={}):
         """Takes a fully-qualified module name, finds all subclasses of TestSet in 
         the module and its submodules and adds their tests to this WorkPool's work."""
         classes = WorkPool.get_classes_from_module(test_name)
         classes = filter(WorkPool.is_testset, classes)
         for cls in classes:
-            self.add_test_class(cls)
+            self.add_test_class(cls, config=config, env=env)
 
-    def add_test_class_by_name(self, full_class_name):
+    def add_test_class_by_name(self, full_class_name, config={}, env={}):
         """Takes a fully-qualified class name for a TestSet subclass and adds the 
         tests in the TestSet to this WorkPool."""
-        self.add_test_class(WorkPool.get_class_from_name(full_class_name))
+        self.add_test_class(WorkPool.get_class_from_name(full_class_name), config=config, env=env)
 
-    def add_test_function(self, full_function_name):
+    def add_test_function(self, full_function_name, config={}, env={}):
         """Takes a fully-qualified function name (e.g. 'module.class.function_name')
         and adds the function to this WorkPool's work."""
         class_name = '.'.join(full_function_name.split('.')[0:-1])
@@ -278,7 +295,7 @@ class WorkPool():
 
         test_class = WorkPool.get_class_from_name(class_name)
         func = getattr(test_class, function_name)
-        self.add_node(test_class, [func])
+        self.add_node(test_class, [func], config=config, env=env)
 
     @staticmethod
     def get_class_from_name(full_class_name):
@@ -291,17 +308,17 @@ class WorkPool():
         test_class = reduce(lambda x, y: getattr(x, y), class_path, root_module)
         return test_class
 
-    def add_test_class(self, cls):
+    def add_test_class(self, cls, config={}, env={}):
         """Takes a class object that should be a subclass of TestSet and adds its
         test functions to this WorkPool's work."""
         # Check to see if this is an ordered or unordered set of tests
         if cls.execution_order == ExecutionOrder.UNORDERED:
             # if it is unordered these test functions are each their own node
             for func in cls.load_tests():
-                self.add_node(cls, [func])
+                self.add_node(cls, [func], config=config, env=env)
         else:
             # if it is ordered then the test functions must all be run together
-            self.add_node(cls, cls.load_tests())
+            self.add_node(cls, cls.load_tests(), config=config, env=env)
 
     def add_failed_ex_groups(self, failed_ex_groups):
         """Takes a list of Execution Groups and adds them to this WorkPool's list
@@ -309,11 +326,11 @@ class WorkPool():
         for group in failed_ex_groups:
             self.failed_ex_groups.add(group)
 
-    def add_node(self, test_class, test_funcs):
+    def add_node(self, test_class, test_funcs, config={}, env={}):
         """Takes a TestSet subclass object and a list of function objects in that 
         class and adds them as a node in the WorkPool's work. The class will be 
         instantiated and the functions called as tests."""
-        new_node = WorkNode(self.next_node_id, test_class, test_funcs)
+        new_node = WorkNode(self.next_node_id, test_class, test_funcs, config=config, env=env)
         self.next_node_id += 1
         self.work_nodes.append(new_node)
 
@@ -355,15 +372,19 @@ class WorkNode():
     resources = None # a list of SharedResource classes this node needs
     test_class = None # The class containing tests for this node
     test_funcs = None # The tests functions for this node
+    test_config = None
+    test_env = None
     user_defined_threads = None
 
-    def __init__(self, id, test_class, test_funcs, user_defined_threads=False):
+    def __init__(self, id, test_class, test_funcs, config={}, env={}, user_defined_threads=False):
         """Takes a node id (must be unique), a TestSet subclass, and a list of test 
         methods in that TestSet subclass."""
         self.id = id
         self.resources = set()
         self.test_class = test_class
         self.test_funcs = test_funcs
+        self.test_config = config
+        self.test_env = env
         self.user_defined_threads = user_defined_threads
 
         if not user_defined_threads:

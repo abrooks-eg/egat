@@ -1,5 +1,5 @@
-from egautotest.testset import SequentialTestSet
-from egautotest.testset import UnorderedTestSet
+from egat.testset import SequentialTestSet
+from egat.testset import UnorderedTestSet
 
 # This is a very basic test class. It subclasses SequentialTestSet, which is a 
 # subclass of TestSet. SequentialTestSet runs all the instance methods in its class 

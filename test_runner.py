@@ -1,8 +1,8 @@
 #!python
-from egautotest.loggers.simple_text_logger import SimpleTextLogger
-from egautotest.loggers.test_logger import LogLevel
-from egautotest.test_runner import TestRunner
-from egautotest.test_runner import ArgumentParser
+from egat.loggers.simple_text_logger import SimpleTextLogger
+from egat.loggers.test_logger import LogLevel
+from egat.test_runner import TestRunner
+from egat.test_runner import ArgumentParser
 
 def main():
     """The command-line interface for the TestRunner class."""

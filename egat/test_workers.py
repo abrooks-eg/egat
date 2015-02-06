@@ -1,6 +1,6 @@
 from threading import Lock
-from egautotest.testset import ExecutionOrder
-from egautotest.testset import TestSet
+from egat.testset import ExecutionOrder
+from egat.testset import TestSet
 from threading import Thread
 import sys
 import traceback

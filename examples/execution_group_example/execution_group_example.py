@@ -1,5 +1,5 @@
-from egautotest.execution_groups import execution_group
-from egautotest.testset import SequentialTestSet
+from egat.execution_groups import execution_group
+from egat.testset import SequentialTestSet
 
 # This class demonstrates how to use an execution group. By annotating this class 
 # an execution group we specify that if one of the methods in class fails then the

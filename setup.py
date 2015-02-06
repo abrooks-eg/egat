@@ -10,8 +10,8 @@
 
 from distutils.core import setup
 setup(
-    name = 'egautotest',
-    packages = ['egautotest', 'egautotest.loggers'], # this must be the same as the name above
+    name = 'egat',
+    packages = ['egat', 'egat.loggers'], # this must be the same as the name above
     scripts = ['test_runner.py'],
     version = '0.1.11',
     description = 'An automated testing toolkit',

@@ -1,5 +1,5 @@
-from egautotest.testset import SequentialTestSet
-from egautotest.testset import UnorderedTestSet
+from egat.testset import SequentialTestSet
+from egat.testset import UnorderedTestSet
 from selenium import webdriver
 
 # In the SequentialTestSet, the setup and teardown methods will be called before any

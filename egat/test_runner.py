@@ -1,4 +1,4 @@
-from egautotest.test_workers import WorkManager
+from egat.test_workers import WorkManager
 import argparse
 import json
 

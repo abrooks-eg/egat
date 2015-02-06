@@ -1,6 +1,6 @@
-from egautotest.shared_resource import SharedResource
-from egautotest.testset import UnorderedTestSet
-from egautotest.testset import SequentialTestSet
+from egat.shared_resource import SharedResource
+from egat.testset import UnorderedTestSet
+from egat.testset import SequentialTestSet
 
 # This example displays the capabilities of SharedResource decorators. By 
 # decorating test classes and functions with their required resources the programmer

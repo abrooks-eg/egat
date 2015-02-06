@@ -1,8 +1,8 @@
 import sys
 import datetime
 import os
-from egautotest.loggers.test_logger import TestLogger
-from egautotest.loggers.test_logger import LogLevel
+from egat.loggers.test_logger import TestLogger
+from egat.loggers.test_logger import LogLevel
 from Queue import Queue
 from Queue import Empty
 from threading import Thread

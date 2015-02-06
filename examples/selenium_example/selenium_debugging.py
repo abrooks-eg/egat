@@ -1,4 +1,4 @@
-from egautotest.testset import UnorderedTestSet
+from egat.testset import UnorderedTestSet
 from selenium import webdriver 
 
 class TestSeleniumDebugging(UnorderedTestSet):

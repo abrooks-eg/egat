@@ -1,4 +1,4 @@
-from egautotest.testset import UnorderedTestSet
+from egat.testset import UnorderedTestSet
 
 class Test1(UnorderedTestSet):
     def testStep1(self):

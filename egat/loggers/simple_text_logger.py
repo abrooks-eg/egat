@@ -34,13 +34,11 @@ class _Printer(Thread):
 class SimpleTextLogger(TestLogger):
     """A very simple logger that writes the test method names and tracebacks in 
     plain text."""
-    current_func_failed = None
-    current_exception = None
-    current_traceback = None
     failure_msg = "Failure"
     success_msg = "Success"
     skipped_msg = "Skipped"
     output_queue = None
+    current_tests = None
 
     def startingTests(self):
         if self.log_dir:
@@ -54,6 +52,8 @@ class SimpleTextLogger(TestLogger):
         else:
             self.out = sys.stdout
 
+        self.current_tests = {}
+
         # Set up the printer
         self.output_queue = Queue()
         self.printer = _Printer(self.output_queue, self.out)
@@ -65,20 +65,24 @@ class SimpleTextLogger(TestLogger):
         pass
 
     def runningTestFunction(self, classname, func, thread_num=None):
-        self.current_func_failed = False
-        self.current_exception = None
-        self.current_traceback = None
+        current_test = {
+            'func_failed': False,
+            'exception': None,
+            'traceback': None,
+        }
+        self.current_tests[(classname, func, thread_num)] = current_test
 
     def finishedTestFunction(self, classname, func, thread_num=None, browser=None):
+        current_test = self.current_tests.pop((classname, func, thread_num))
         func_str = SimpleTextLogger.format_function_name(classname, func)
         msg = ""
-        if self.current_func_failed:
+        if current_test['func_failed']:
             msg = self.failure_msg
         else:
             msg = self.success_msg
 
         self.output_queue.put(
-            (func_str, msg, self.current_traceback)
+            (func_str, msg, current_test['traceback'])
         )
 
         if self.log_level == LogLevel.DEBUG:
@@ -89,9 +93,11 @@ class SimpleTextLogger(TestLogger):
         self.output_queue.put((func_str, self.skipped_msg, None))
 
     def foundException(self, classname, func, e, tb, thread_num=None, browser=None):
-        self.current_func_failed = True
-        self.current_exception = e
-        self.current_traceback = tb
+        current_test = self.current_tests[(classname, func, thread_num)]
+
+        current_test['func_failed'] = True
+        current_test['exception'] = e
+        current_test['traceback'] = tb
         if self.log_level == LogLevel.ERROR:
             self.log_debug_info(browser, classname, func)
 

@@ -1,5 +1,6 @@
 #!/usr/bin/python
 from egat.loggers.simple_text_logger import SimpleTextLogger
+from egat.loggers.html_logger import HTMLLogger
 from egat.loggers.test_logger import LogLevel
 from egat.test_runner import TestRunner
 from egat.test_runner import ArgumentParser
@@ -19,7 +20,7 @@ def main():
 
     # Set up the TestRunner and TestLogger
     if args.log:
-        logger = SimpleTextLogger(log_dir=args.log)
+        logger = HTMLLogger(log_dir=args.log)
     else:
         logger = SimpleTextLogger()
     logger.set_log_level(log_level)

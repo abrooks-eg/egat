@@ -88,7 +88,7 @@ class SimpleTextLogger(TestLogger):
         func_str = SimpleTextLogger.format_function_name(classname, func)
         self.output_queue.put((func_str, self.skipped_msg, None))
 
-    def foundException(self, classname, func, e, tb, browser=None):
+    def foundException(self, classname, func, e, tb, thread_num=None, browser=None):
         self.current_func_failed = True
         self.current_exception = e
         self.current_traceback = tb

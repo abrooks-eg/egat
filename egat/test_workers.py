@@ -166,7 +166,7 @@ class WorkerThread(Thread):
                 )
 
 
-                self.logger.foundException(classname, func, e, tb, browser=browser)
+                self.logger.foundException(classname, func, e, tb, thread_num=self.thread_num, browser=browser)
 
             self.logger.finishedTestFunction(classname, func, 
                                              thread_num=self.thread_num, 

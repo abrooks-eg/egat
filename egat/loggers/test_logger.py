@@ -44,10 +44,11 @@ class TestLogger():
 
     def skippingTestFunction(self, classname, func, thread_num=None):
         """Called by the test runner. Indicates that the given test function from
-        the given class has been skipped."""
+        the given class has been skipped. This method is called instead of 
+        runningTestFunction()."""
         pass
 
-    def foundException(self, classname, func, e, tb, browser=None):
+    def foundException(self, classname, func, e, tb, thread_num=None, browser=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class has encountered an exception. The exception object and stack 
         trace (string) are also provided. An optional 'browser' argument may be 

@@ -68,7 +68,7 @@ class WorkManager():
         """Returns a new WorkPool instance attached to this WorkManager. The WorkPool
         can have tests added to it which will be run when 'run_tests()' is called
         on this WorkManager."""
-        work_pool = WorkPool(self)
+        work_pool = WorkPool()
         self.work_pools.append(work_pool)
         return work_pool
 
@@ -119,9 +119,7 @@ class WorkerThread(Thread):
 
             if cur_node:
                 self.run_tests_for_node(cur_node)
-                # Remove this nodes resources from the thread_manager
-                for resource in cur_node.resources:
-                    self.work_pool.cur_resources.remove(resource)
+                self.work_pool.release_resources(cur_node.resources)
 
     def run_tests_for_node(self, node):
         """Takes a WorkNode and runs the tests it contains."""
@@ -130,7 +128,7 @@ class WorkerThread(Thread):
         # and don't instatiate the class or call setup
         if len(node.test_funcs) == 1:
             func = node.test_funcs[0]
-            if self.has_failed_ex_groups(node.test_class, func):
+            if WorkerThread.has_failed_ex_groups(node.test_class, func, self.work_pool):
                 self.logger.skippingTestFunction(classname, func, thread_num=self.thread_num)
                 return
                 
@@ -145,7 +143,7 @@ class WorkerThread(Thread):
         # Run all the test functions
         for func in node.test_funcs:
             # Check for failed execution groups
-            if self.has_failed_ex_groups(node.test_class, func):
+            if WorkerThread.has_failed_ex_groups(node.test_class, func, self.work_pool):
                 self.logger.skippingTestFunction(classname, func, thread_num=self.thread_num)
                 continue
 
@@ -162,7 +160,7 @@ class WorkerThread(Thread):
                 e = sys.exc_info()[0]
                 tb = traceback.format_exc()
                 self.work_pool.add_failed_ex_groups(
-                    self.get_ex_groups(func) + self.get_ex_groups(node.test_class)
+                    WorkerThread.get_ex_groups(node.test_class, func)
                 )
 
 
@@ -176,25 +174,30 @@ class WorkerThread(Thread):
         if hasattr(instance, 'teardown') and callable(instance.teardown):
             instance.teardown()
 
-    def has_failed_ex_groups(self, test_class, func):
-        """Takes a classname and a function object in that class and checks the 
+    @staticmethod
+    def has_failed_ex_groups(test_class, func, work_pool):
+        """Takes a class and a function object in that class and checks the 
         WorkPool to see if any of the Execution Groups the function or class is a
         member of have failed. Returns True if the function is a member of a failed 
         Execution Group and False otherwise."""
         execution_groups = set(
-            self.get_ex_groups(func) + self.get_ex_groups(test_class)
+            WorkerThread.get_ex_groups(test_class, func)
         )
         for ex_group in execution_groups:
-            if ex_group in self.work_pool.failed_ex_groups:
+            if ex_group in work_pool.failed_ex_groups:
                 return True
 
         return False
 
-    def get_ex_groups(self, func_or_class):
-        """Takes an object and safely tries to get its Execution Groups. Returns 
-        either a list of Execution Groups or an empty list."""
-        if hasattr(func_or_class, 'execution_groups'):
-            return func_or_class.execution_groups
+    @staticmethod
+    def get_ex_groups(*func_or_class):
+        """Takes a variable number of objects and safely tries to get their Execution
+        Groups. Returns either a flat list of all the object's Execution Groups or an 
+        empty list."""
+        if type(func_or_class) is tuple and len(func_or_class) > 1:
+            return [g for ls in map(WorkerThread.get_ex_groups, func_or_class) for g in ls]
+        elif hasattr(func_or_class[0], 'execution_groups'):
+            return func_or_class[0].execution_groups
         else:
             return []
 
@@ -204,50 +207,19 @@ class WorkPool():
     work_nodes = None
     next_node_id = None
     lock = None
-    work_manager = None
     user_defined_threads = None
     # Execution groups that have failed. List items can be any type.
     failed_ex_groups = None 
-    cur_resources = None
+    _cur_resources = None
 
 
-    def __init__(self, work_manager, user_defined_threads=False):
+    def __init__(self, user_defined_threads=False):
         self.work_nodes = []
         self.next_node_id = 1
         self.lock = Lock()
-        self.work_manager = work_manager
         self.user_defined_threads = user_defined_threads
         self.failed_ex_groups = set()
-        self.cur_resources = set()
-
-    @staticmethod
-    def get_classes_from_module(module_name):
-        """Takes a module name like the one passed to the 'import' command and 
-        returns all the classes defined in all that modules submodules."""
-        classes = []
-        module = __import__(module_name)
-        prefix = module_name.split('.')[0] + "."
-        original_modname = module_name
-
-        for importer, module_name, ispkg in pkgutil.walk_packages(module.__path__, prefix=prefix):
-            try:
-                module = importer.find_module(module_name).load_module(module_name)
-                mod_classes = [t[1] for t in inspect.getmembers(module, inspect.isclass)]
-                classes += filter(lambda c: c.__module__.startswith(original_modname), mod_classes)
-            except ImportError:
-                pass
-
-        return classes
-
-    @staticmethod
-    def is_testset(cls):
-        """Takes a class object and returns True if it is a subclass of TestSet and 
-        False otherwise."""
-        base_classes = cls.__bases__
-        for base in base_classes:
-            if base == TestSet or WorkPool.is_testset(base):
-                return True
-        return False
+        self._cur_resources = set()
 
     def add_tests(self, tests):
         for test in tests:
@@ -301,6 +273,25 @@ class WorkPool():
         self.add_node(test_class, [func], config=config, env=env)
 
     @staticmethod
+    def get_classes_from_module(module_name):
+        """Takes a module name like the one passed to the 'import' command and 
+        returns a set of all the classes defined in all that modules submodules."""
+        classes = []
+        module = __import__(module_name)
+        prefix = module_name.split('.')[0] + "."
+        original_modname = module_name
+
+        for importer, module_name, ispkg in pkgutil.walk_packages(module.__path__, prefix=prefix):
+            try:
+                module = importer.find_module(module_name).load_module(module_name)
+                mod_classes = [t[1] for t in inspect.getmembers(module, inspect.isclass)]
+                classes += filter(lambda c: c.__module__.startswith(original_modname), mod_classes)
+            except ImportError:
+                pass
+
+        return set(classes)
+
+    @staticmethod
     def get_class_from_name(full_class_name):
         """Takes a fully-qualified class name as a string and returns the class 
         object."""
@@ -310,6 +301,17 @@ class WorkPool():
         root_module = __import__(module_name)
         test_class = reduce(lambda x, y: getattr(x, y), class_path, root_module)
         return test_class
+
+    @staticmethod
+    def is_testset(cls):
+        """Takes a class object and returns True if it is a subclass of TestSet and 
+        False otherwise."""
+        base_classes = cls.__bases__
+        for base in base_classes:
+            if base == TestSet or WorkPool.is_testset(base):
+                return True
+        return False
+
 
     def add_test_class(self, cls, config={}, env={}):
         """Takes a class object that should be a subclass of TestSet and adds its
@@ -343,27 +345,33 @@ class WorkPool():
 
     def next_available_node(self):
         """Finds and returns the next available node of work, and removes it from 
-        the work pool. This method will block until work is available or the work 
-        pool is empty."""
+        the work pool. If no work is currently available, this method will return."""
         self.lock.acquire()
 
-        available_node = None
         for node in self.work_nodes:
-            all_resources_available = True
-            for resource in node.resources:
-                if resource in self.cur_resources:
-                    all_resources_available = False
-            
-            if all_resources_available:
-                available_node = node
-                for resource in available_node.resources:
-                    self.cur_resources.add(resource)
+            if WorkPool.resources_are_free(node.resources, self._cur_resources):
+                self._cur_resources = self._cur_resources.union(node.resources)
                 self.remove_node(node)
-                break
+                self.lock.release()
+                return node
 
         self.lock.release()
 
-        return available_node
+    def release_resources(self, resources):
+        """Takes a list of resources and removes them from this WorkPool's list of
+        currently used resources."""
+        self.lock.acquire()
+        self._cur_resources = self._cur_resources.difference(resources)
+        self.lock.release()
+
+    @staticmethod
+    def resources_are_free(required_resources, used_resources):
+        """Takes a list of required resources and returns True if none of them are 
+        in the list of used_resources, and False otherwise."""
+        for required_resource in required_resources:
+            if required_resource in used_resources:
+                return False
+        return True
 
 class WorkNode():
     """A class that represents a node in the work of a WorkPool. Each node 
@@ -371,7 +379,7 @@ class WorkNode():
     to share with other nodes (SharedResources). Each node has edges that connect 
     it to other nodes that share its SharedResources and thus cannot be run at the 
     same time."""
-    id = None # this node's unique id
+    id_ = None # this node's unique id
     resources = None # a list of SharedResource classes this node needs
     test_class = None # The class containing tests for this node
     test_funcs = None # The tests functions for this node
@@ -379,10 +387,10 @@ class WorkNode():
     test_env = None
     user_defined_threads = None
 
-    def __init__(self, id, test_class, test_funcs, config={}, env={}, user_defined_threads=False):
-        """Takes a node id (must be unique), a TestSet subclass, and a list of test 
+    def __init__(self, id_, test_class, test_funcs, config={}, env={}, user_defined_threads=False):
+        """Takes a node id_ (must be unique), a TestSet subclass, and a list of test 
         methods in that TestSet subclass."""
-        self.id = id
+        self.id_ = id_
         self.resources = set()
         self.test_class = test_class
         self.test_funcs = test_funcs

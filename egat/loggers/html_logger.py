@@ -183,12 +183,13 @@ class HTMLWriter():
                 </tr>""" % (class_name)
 
             for env_str, test_results in tests_by_env.items():
-                # Add environment header
-                html += """
-                    <tr class="environment-header">
-                        <td></td>
-                        <td colspan="5">%s</td>
-                    </tr>""" % test_results[0].environment_string()
+                if test_results[0].environment:
+                    # Add environment header
+                    html += """
+                        <tr class="environment-header">
+                            <td></td>
+                            <td colspan="5">%s</td>
+                        </tr>""" % test_results[0].environment_string()
 
                 for result in test_results:
                     if result.traceback:
@@ -209,7 +210,7 @@ class HTMLWriter():
                                 <div id="%s-hidden-traceback" class='traceback'>%s</div
                             </td>
                         </tr>
-                        """ % (i, result.func.__name__, result.status, result.status, result.thread, i, i, result.traceback)
+                        """ % (i, result.func.__name__, result.status, result.status, result.thread + 1, i, i, result.traceback)
 
                     html += row
                     i += 1

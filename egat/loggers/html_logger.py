@@ -5,6 +5,7 @@ import time
 import cgi
 from egat.loggers.test_logger import TestLogger
 from egat.loggers.test_logger import LogLevel
+from egat.test_result import TestResult
 from itertools import groupby
 from Queue import Queue
 from Queue import Empty
@@ -14,15 +15,6 @@ class TestResultType():
     FAILURE = "failure"
     SKIPPED = "skipped"
 
-
-class TestResult():
-    def __init__(self, class_name, func_name, status, traceback, error, thread=None):
-        self.class_name = class_name
-        self.func_name = func_name
-        self.status = status
-        self.traceback = traceback
-        self.error = error
-        self.thread = thread
 
 class HTMLWriter():
     @staticmethod
@@ -157,9 +149,9 @@ class HTMLWriter():
         # Group tests by class
         tests_by_class = {}
         for result in results:
-            tests = tests_by_class.get(result.class_name, [])
+            tests = tests_by_class.get(result.full_class_name(), [])
             tests.append(result)
-            tests_by_class[result.class_name] = tests
+            tests_by_class[result.full_class_name()] = tests
 
         html += "<table class='results-table'>"
 
@@ -199,7 +191,7 @@ class HTMLWriter():
                             <div id="%s-hidden-traceback" class='traceback'>%s</div
                         </td>
                     </tr>
-                    """ % (i, result.func_name, result.status, result.status, result.thread, i, i, result.traceback)
+                    """ % (i, result.func.__name__, result.status, result.status, result.thread, i, i, result.traceback)
 
                 html += row
                 i += 1
@@ -248,45 +240,36 @@ class HTMLLogger(TestLogger):
     def finishedTests(self):
         HTMLWriter.write_test_results(self.results, self.test_title, self.out)
 
-    def runningTestFunction(self, classname, func, thread_num=None):
-        class_str = HTMLLogger.format_class_name(classname, func)
-        func_str = func.__name__
-        result = TestResult(class_str, func_str, None, None, None, thread=thread_num)
-        self.current_tests[(classname, func, thread_num)] = result
+    def runningTestFunction(self, instance, func, thread_num=None):
+        result = TestResult(instance, func, thread=thread_num)
+        self.current_tests[(instance, func, thread_num)] = result
 
-    def finishedTestFunction(self, classname, func, thread_num=None, browser=None):
-        result = self.current_tests.pop((classname, func, thread_num))
+    def finishedTestFunction(self, instance, func, thread_num=None, browser=None):
+        result = self.current_tests.pop((instance, func, thread_num))
         if not result.status: result.status = TestResultType.SUCCESS
         self.results.put(result)
 
         if self.log_level == LogLevel.DEBUG:
-            self.log_debug_info(browser, classname, func)
+            self.log_debug_info(instance, func)
 
-    def skippingTestFunction(self, classname, func, thread_num=None):
-        class_str = HTMLLogger.format_class_name(classname, func)
-        func_str = func.__name__
-        result = TestResult(class_str, func_str, TestResultType.SKIPPED, None, None, thread=thread_num)
+    def skippingTestFunction(self, instance, func, thread_num=None):
+        result = TestResult(instance, func, status=TestResultType.SKIPPED, thread=thread_num)
         self.results.put(result)
 
-    def foundException(self, classname, func, e, tb, thread_num=None, browser=None):
-        result = self.current_tests[(classname, func, thread_num)]
+    def foundException(self, instance, func, e, tb, thread_num=None, browser=None):
+        result = self.current_tests[(instance, func, thread_num)]
         result.status = TestResultType.FAILURE
         result.error = e
         result.traceback = tb
 
         if self.log_level == LogLevel.ERROR:
-            self.log_debug_info(browser, classname, func)
+            self.log_debug_info(instance, func)
 
-    @staticmethod
-    def format_class_name(classname, func):
-        """Takes a class name and a function from that class and returns the fully 
-        qualified class name as a string."""
-        return "%s.%s" % (func.__module__, classname)
-
-    def log_debug_info(self, browser, classname, func):
-        """Takes a Selenium Webdriver (or None) and a classname, and function 
-        object. If the browser object is not none it will take a screenshot of the 
-        browser window and save the page source to the log_dir."""
+    def log_debug_info(self, classname, func):
+        """Takes a class instance and a function object. If the class has an 
+        attribute called 'browser' this method will take a screenshot of the browser 
+        window and save the page source to the log_dir."""
+        browser = getattr(instance, 'browser', None)
         if browser:
             func_str = HTMLLogger.format_function_name(classname, func)
             path = self.log_dir if self.log_dir else "."

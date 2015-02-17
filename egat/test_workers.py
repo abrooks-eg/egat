@@ -124,18 +124,18 @@ class WorkerThread(Thread):
     def run_tests_for_node(self, node):
         """Takes a WorkNode and runs the tests it contains."""
         classname = node.test_class.__name__
+        instance = node.test_class()
+        setattr(instance, 'configuration', node.test_config)
+        setattr(instance, 'environment', node.test_env)
+
         # if this node contains only one function, check for failed execution groups
         # and don't instatiate the class or call setup
         if len(node.test_funcs) == 1:
             func = node.test_funcs[0]
             if WorkerThread.has_failed_ex_groups(node.test_class, func, self.work_pool):
-                self.logger.skippingTestFunction(classname, func, thread_num=self.thread_num)
+                self.logger.skippingTestFunction(instance, func, thread_num=self.thread_num)
                 return
                 
-        instance = node.test_class()
-        setattr(instance, 'configuration', node.test_config)
-        setattr(instance, 'environment', node.test_env)
-
         # Try to call the class's setup method
         if hasattr(instance, 'setup') and callable(instance.setup):
             instance.setup()
@@ -144,16 +144,10 @@ class WorkerThread(Thread):
         for func in node.test_funcs:
             # Check for failed execution groups
             if WorkerThread.has_failed_ex_groups(node.test_class, func, self.work_pool):
-                self.logger.skippingTestFunction(classname, func, thread_num=self.thread_num)
+                self.logger.skippingTestFunction(instance, func, thread_num=self.thread_num)
                 continue
 
-            # An optional Selenium Webdriver object that the logger may use to 
-            # extract debugging information from.
-            browser = None
-            if self.manager.selenium_debugging_enabled:
-                browser = getattr(instance, 'browser', None)
-
-            self.logger.runningTestFunction(classname, func, thread_num=self.thread_num)
+            self.logger.runningTestFunction(instance, func, thread_num=self.thread_num)
             try: 
                 func(instance)
             except:
@@ -164,11 +158,9 @@ class WorkerThread(Thread):
                 )
 
 
-                self.logger.foundException(classname, func, e, tb, thread_num=self.thread_num, browser=browser)
+                self.logger.foundException(instance, func, e, tb, thread_num=self.thread_num)
 
-            self.logger.finishedTestFunction(classname, func, 
-                                             thread_num=self.thread_num, 
-                                             browser=browser)
+            self.logger.finishedTestFunction(instance, func, thread_num=self.thread_num)
 
         # Try to call the class's teardown method
         if hasattr(instance, 'teardown') and callable(instance.teardown):

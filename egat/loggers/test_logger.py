@@ -32,23 +32,23 @@ class TestLogger():
         """Called by the test runner. Indicates that all tests are finished."""
         pass
 
-    def runningTestFunction(self, classname, func, thread_num=None):
+    def runningTestFunction(self, class_instance, func, thread_num=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class is about to be run."""
         pass
 
-    def finishedTestFunction(self, classname, func, thread_num=None, browser=None):
+    def finishedTestFunction(self, class_instance, func, thread_num=None, browser=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class is finished running."""
         pass
 
-    def skippingTestFunction(self, classname, func, thread_num=None):
+    def skippingTestFunction(self, class_instance, func, thread_num=None):
         """Called by the test runner. Indicates that the given test function from
         the given class has been skipped. This method is called instead of 
         runningTestFunction()."""
         pass
 
-    def foundException(self, classname, func, e, tb, thread_num=None, browser=None):
+    def foundException(self, class_instance, func, e, tb, thread_num=None, browser=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class has encountered an exception. The exception object and stack 
         trace (string) are also provided. An optional 'browser' argument may be 

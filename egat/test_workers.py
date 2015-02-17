@@ -280,14 +280,20 @@ class WorkPool():
         module = __import__(module_name)
         prefix = module_name.split('.')[0] + "."
         original_modname = module_name
+        path = getattr(module, '__path__', None)
 
-        for importer, module_name, ispkg in pkgutil.walk_packages(module.__path__, prefix=prefix):
-            try:
-                module = importer.find_module(module_name).load_module(module_name)
-                mod_classes = [t[1] for t in inspect.getmembers(module, inspect.isclass)]
-                classes += filter(lambda c: c.__module__.startswith(original_modname), mod_classes)
-            except ImportError:
-                pass
+        if path:
+            # module is a package, walk it
+            for importer, module_name, ispkg in pkgutil.walk_packages(path, prefix=prefix):
+                try:
+                    module = importer.find_module(module_name).load_module(module_name)
+                    mod_classes = [t[1] for t in inspect.getmembers(module, inspect.isclass)]
+                    classes += filter(lambda c: c.__module__.startswith(original_modname), mod_classes)
+                except ImportError:
+                    pass
+        else:
+            # module is not a package
+            classes = [t[1] for t in inspect.getmembers(module, inspect.isclass)]
 
         return set(classes)
 

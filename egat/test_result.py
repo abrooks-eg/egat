@@ -26,3 +26,6 @@ class TestResult():
         qualified class name as a string."""
         return "%s.%s" % (self.func.__module__, self.class_.__name__)
 
+    def environment_string(self):
+        """Returns a string representing this TestResult's environment."""
+        return ", ".join(map(str, self.environment.values()))

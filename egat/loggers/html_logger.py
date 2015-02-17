@@ -50,7 +50,12 @@ class HTMLWriter():
                                   border: 1px solid black;
                                   padding: 15px;
                               }
-                              .class-name {
+                              .class-header {
+                                  background-color: rgb(240, 240, 240);
+                                  font-family: "Verdana";
+                                  font-size: 14pt;
+                              }
+                              .environment-header {
                                   background-color: rgb(240, 240, 240);
                                   font-family: "Verdana";
                                   font-size: 14pt;
@@ -146,19 +151,23 @@ class HTMLWriter():
             </table>
             <br />""" % (successes, failures, skipped)
 
-        # Group tests by class
+        # Group tests by class and environment
         tests_by_class = {}
         for result in results:
-            tests = tests_by_class.get(result.full_class_name(), [])
-            tests.append(result)
-            tests_by_class[result.full_class_name()] = tests
+            tests_by_env = tests_by_class.get(result.full_class_name(), {})
+            env_str = HTMLWriter.hashable(result.environment)
+            results = tests_by_env.get(env_str, []) 
+            results.append(result)
+            tests_by_env[env_str] = results
+            tests_by_class[result.full_class_name()] = tests_by_env
 
         html += "<table class='results-table'>"
 
         # Add table headings
         html += """
             <tr>
-                <th>Class</th>
+                <th></th>
+                <th></th>
                 <th>Function</th>
                 <th>Status</th>
                 <th>Thread</th>
@@ -166,35 +175,44 @@ class HTMLWriter():
             </tr>"""
 
         i = 0
-        for class_name, test_results in tests_by_class.items():
+        for class_name, tests_by_env in tests_by_class.items():
+            # Add class header
             html += """
-                <tr class="class-name">
-                    <td colspan="5">%s</td>
+                <tr class="class-header">
+                    <td colspan="6">%s</td>
                 </tr>""" % (class_name)
 
+            for env_str, test_results in tests_by_env.items():
+                # Add environment header
+                html += """
+                    <tr class="environment-header">
+                        <td></td>
+                        <td colspan="5">%s</td>
+                    </tr>""" % test_results[0].environment_string()
 
-            for result in test_results:
-                if result.traceback:
-                    result.traceback = cgi.escape(result.traceback)
-                    result.traceback = result.traceback.replace(' ', '&nbsp;')
-                    result.traceback = result.traceback.replace('\n', '<br />')
-                row = """
-                    <tr id="%s-result" class="test-result">
-                        <td class='empty-cell'></td>
-                        <td class='function-name'>%s</td>
-                        <td class='%s'>%s</td>
-                        <td class='thread-num'>%s</td>
-                        <td class="details-btn">
-                            <a onclick="toggleDetails(%s)">Details</a>
-                        </td>
-                        <td style="display:none">
-                            <div id="%s-hidden-traceback" class='traceback'>%s</div
-                        </td>
-                    </tr>
-                    """ % (i, result.func.__name__, result.status, result.status, result.thread, i, i, result.traceback)
+                for result in test_results:
+                    if result.traceback:
+                        result.traceback = cgi.escape(result.traceback)
+                        result.traceback = result.traceback.replace(' ', '&nbsp;')
+                        result.traceback = result.traceback.replace('\n', '<br />')
+                    row = """
+                        <tr id="%s-result" class="test-result">
+                            <td class='empty-cell'></td>
+                            <td class='empty-cell'></td>
+                            <td class='function-name'>%s</td>
+                            <td class='%s'>%s</td>
+                            <td class='thread-num'>%s</td>
+                            <td class="details-btn">
+                                <a onclick="toggleDetails(%s)">Details</a>
+                            </td>
+                            <td style="display:none">
+                                <div id="%s-hidden-traceback" class='traceback'>%s</div
+                            </td>
+                        </tr>
+                        """ % (i, result.func.__name__, result.status, result.status, result.thread, i, i, result.traceback)
 
-                html += row
-                i += 1
+                    html += row
+                    i += 1
 
         html += "</table></body></html>"
 
@@ -214,6 +232,11 @@ class HTMLWriter():
         except: Empty
 
         return result
+
+    @staticmethod
+    def hashable(d):
+        """Takes a dictionary and returns a hashable string representing it."""
+        return "%^&*|".join(map(str, d.keys() + d.values()))
 
 class HTMLLogger(TestLogger):
     """A logger that writes test output to an interactive HTML page."""

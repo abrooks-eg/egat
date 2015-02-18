@@ -18,13 +18,13 @@ class TestResultType():
 
 class HTMLWriter():
     @staticmethod
-    def write_test_results(test_results, title, fp):
+    def write_test_results(test_results, start_time, end_time, fp):
         """Takes a list of TestResult objects and an open file pointer and writes 
         the test results as HTML to the given file."""
 
-        html = ""
+        title = "Test Run %s" % start_time.strftime("%m-%d-%y %H:%I %p")
 
-        html += """
+        html = """
             <html>
                 <head>
                     <title>%s</title>
@@ -121,9 +121,19 @@ class HTMLWriter():
                         }
                     </script>
                 </head>
-                <body>
-                    <h1>%s</h1> """ % (title, title)
+                <body>""" % title
 
+        html += """
+            <h1>%s</h1> 
+            <h3>Start time: %s</h3>
+            <h3>End time: %s</h3>
+            <h3>Duration: %s</h3>
+        """  % (
+            title,
+            start_time.strftime("%m-%d-%y %H:%M:%S"),
+            end_time.strftime("%m-%d-%y %H:%M:%S"),
+            str(end_time - start_time).split('.', 2)[0]
+        )
 
         results = HTMLWriter.dump_queue(test_results)
 
@@ -244,15 +254,17 @@ class HTMLLogger(TestLogger):
     out = None
     results = None
     current_tests = None
+    start_time = None
+    end_time = None
     test_title = None
 
     def startingTests(self):
         if not self.log_dir: self.log_dir = "."
 
         # Set up the log file
-        start_time = datetime.datetime.now().strftime("%m-%d-%y %H:%M:%S")
+        self.start_time = datetime.datetime.now()
         self.log_dir = self.log_dir.rstrip('/')
-        self.test_title = "Test Run %s" % start_time
+        self.test_title = "Test Run %s" % self.start_time.strftime("%m-%d-%y %H:%M:%S")
         self.log_dir += "/%s" % self.test_title.replace(':', '.')
         os.mkdir(self.log_dir)
         log_name = "%s/results.html" % self.log_dir
@@ -262,7 +274,8 @@ class HTMLLogger(TestLogger):
         self.current_tests = {}
     
     def finishedTests(self):
-        HTMLWriter.write_test_results(self.results, self.test_title, self.out)
+        self.end_time = datetime.datetime.now()
+        HTMLWriter.write_test_results(self.results, self.start_time, self.end_time, self.out)
 
     def runningTestFunction(self, instance, func, thread_num=None):
         result = TestResult(instance, func, thread=thread_num)

@@ -3,6 +3,7 @@ import datetime
 import os
 import time
 import cgi
+import itertools
 from egat.loggers.test_logger import TestLogger
 from egat.loggers.test_logger import LogLevel
 from egat.test_result import TestResult
@@ -96,8 +97,20 @@ class HTMLWriter():
                                   background-color: #FFF692;
                                   text-align: center;
                               }
-                              .totals {
-                                  text-align: left;
+                              .empty-total {
+                                  text-align: center;
+                              }
+                              .class-totals-container {
+                                  padding: 0px !important;
+                                  border-collapse: collapse !important;
+                                  background-color: rgb(240, 240, 240);
+                              }
+                              .class-totals-table td {
+                                  border-top: 0px solid black;
+                                  border-right: 0px solid black;
+                                  border-bottom: 0px solid black;
+                                  border-left: 0px solid black;
+                                  padding: 15px;
                               }
                     </style>
                     <script type="text/javascript">
@@ -138,16 +151,9 @@ class HTMLWriter():
         results = HTMLWriter.dump_queue(test_results)
 
         # Calculate totals
-        successes = 0
-        failures = 0
-        skipped = 0
-        for result in results:
-            if result.status == TestResultType.SUCCESS:
-                successes += 1
-            if result.status == TestResultType.FAILURE:
-                failures += 1
-            if result.status == TestResultType.SKIPPED:
-                skipped += 1
+        successes = len(filter(lambda r: r.status == TestResultType.SUCCESS, results))
+        failures = len(filter(lambda r: r.status == TestResultType.FAILURE, results))
+        skipped = len(filter(lambda r: r.status == TestResultType.SKIPPED, results))
 
         # Add totals row
         html += """
@@ -186,11 +192,30 @@ class HTMLWriter():
 
         i = 0
         for class_name, tests_by_env in tests_by_class.items():
+            # find class totals
+            all_results = list(itertools.chain(*tests_by_env.values()))
+            successes = len(filter(lambda r: r.status == TestResultType.SUCCESS, all_results))
+            failures = len(filter(lambda r: r.status == TestResultType.FAILURE, all_results))
+            skipped = len(filter(lambda r: r.status == TestResultType.SKIPPED, all_results))
+
             # Add class header
             html += """
                 <tr class="class-header">
                     <td colspan="6">%s</td>
-                </tr>""" % (class_name)
+                </tr>
+                <tr>
+                    <td colspan="6" class="class-totals-container">
+                        <table class='class-totals-table'>
+                            <td>Successes</td>
+                            <td colspan="1">%d</td>
+                            <td>Failures</td>
+                            <td colspan="1">%d</td>
+                            <td>Skipped</td>
+                            <td colspan="1">%d</td>
+                        </table>
+                    </td>
+                </tr>
+                """ % (class_name, successes, failures, skipped)
 
             for env_str, test_results in tests_by_env.items():
                 if test_results[0].environment:

@@ -155,6 +155,13 @@ class ArgumentParser():
          you wish to run. Classes should be subclasses of TestSet."""
       )
 
+      parser.add_argument(
+          '--css-path',
+          type=str,
+          help="""An optional css file to be used with the HTMLLogger instead of the 
+          default one."""
+      )
+
 
 
    def parse_args(self):

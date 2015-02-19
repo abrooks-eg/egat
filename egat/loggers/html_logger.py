@@ -19,10 +19,102 @@ class TestResultType():
 
 
 class HTMLWriter():
+
+    default_css = """
+        body {
+            font-family: "Verdana";
+            font-size: 12pt;
+        }
+        .results-table {
+            border-collapse: collapse;
+        }
+        .results-table th {
+            border: 1px solid black;
+            padding: 15px;
+            background-color: rgb(240, 240, 240);
+            font-weight: 300;
+            font-size: 14pt;
+        }
+        .results-table tr {
+            border: 1px solid black;
+        }
+        .results-table td {
+            border: 1px solid black;
+            padding: 15px;
+        }
+        .class-header {
+            background-color: rgb(240, 240, 240);
+            font-family: "Verdana";
+            font-size: 14pt;
+        }
+        .environment-header {
+            background-color: rgb(240, 240, 240);
+            font-family: "Verdana";
+            font-size: 14pt;
+        }
+        .function-name {
+            font-family: "Andale Mono";
+            width: 700px;
+        }
+        .thread-num {
+            text-align: center;
+        }
+        .details-btn {
+            text-decoration: underline;
+            text-align: center;
+            background-color: rgb(240, 240, 240);
+            cursor: pointer;
+        }
+        .details {
+            font-family: "Andale Mono";
+            font-size: 10pt;
+            width: 700px;
+        }
+        .success {
+            color: #276943;
+            border-color: #276943;
+            background-color: #95d7b2;
+            text-align: center;
+        }
+        .failure {
+            color: #671a10;
+            border-color: #671a10;
+            background-color: #e87a6a;
+            text-align: center;
+        }
+        .skipped {
+            color: #716d06;
+            border-color: #716d06;
+            background-color: #FFF692;
+            text-align: center;
+        }
+        .empty-total {
+            text-align: center;
+        }
+        .class-totals-container {
+            padding: 0px !important;
+            border-collapse: collapse !important;
+            background-color: rgb(240, 240, 240);
+        }
+        .class-totals-table td {
+            border-top: 0px solid black;
+            border-right: 0px solid black;
+            border-bottom: 0px solid black;
+            border-left: 0px solid black;
+            padding: 15px;
+        }
+        """
+
     @staticmethod
-    def write_test_results(test_results, start_time, end_time, fp):
+    def write_test_results(test_results, start_time, end_time, fp, css_path=None):
         """Takes a list of TestResult objects and an open file pointer and writes 
         the test results as HTML to the given file."""
+
+        css_str = ""
+        if css_path:
+            css_str = '<link rel="stylesheet" href="%s" type="text/css">' % css_path
+        else:
+            css_str = '<style>%s</style>' % HTMLWriter.default_css
 
         title = "Test Run %s" % start_time.strftime("%m-%d-%y %H:%I %p")
 
@@ -30,90 +122,7 @@ class HTMLWriter():
             <html>
                 <head>
                     <title>%s</title>
-                    <style>
-                           body {
-                                  font-family: "Verdana";
-                                  font-size: 12pt;
-                              }
-                              .results-table {
-                                  border-collapse: collapse;
-                              }
-                              .results-table th {
-                                  border: 1px solid black;
-                                  padding: 15px;
-                                  background-color: rgb(240, 240, 240);
-                                  font-weight: 300;
-                                  font-size: 14pt;
-                              }
-                              .results-table tr {
-                                  border: 1px solid black;
-                              }
-                              .results-table td {
-                                  border: 1px solid black;
-                                  padding: 15px;
-                              }
-                              .class-header {
-                                  background-color: rgb(240, 240, 240);
-                                  font-family: "Verdana";
-                                  font-size: 14pt;
-                              }
-                              .environment-header {
-                                  background-color: rgb(240, 240, 240);
-                                  font-family: "Verdana";
-                                  font-size: 14pt;
-                              }
-                              .function-name {
-                                  font-family: "Andale Mono";
-                                  width: 700px;
-                              }
-                              .thread-num {
-                                  text-align: center;
-                              }
-                              .details-btn {
-                                  text-decoration: underline;
-                                  text-align: center;
-                                  background-color: rgb(240, 240, 240);
-                                  cursor: pointer;
-                              }
-                              .details {
-                                  font-family: "Andale Mono";
-                                  font-size: 10pt;
-                                  width: 700px;
-                              }
-                              .success {
-                                  color: #276943;
-                                  border-color: #276943;
-                                  background-color: #95d7b2;
-                                  text-align: center;
-                              }
-                              .failure {
-                                  color: #671a10;
-                                  border-color: #671a10;
-                                  background-color: #e87a6a;
-                                  text-align: center;
-                              }
-                              .skipped {
-                                  color: #716d06;
-                                  border-color: #716d06;
-                                  background-color: #FFF692;
-                                  text-align: center;
-                              }
-                              .empty-total {
-                                  text-align: center;
-                              }
-                              .class-totals-container {
-                                  padding: 0px !important;
-                                  border-collapse: collapse !important;
-                                  background-color: rgb(240, 240, 240);
-                              }
-                              .class-totals-table td {
-                                  border-top: 0px solid black;
-                                  border-right: 0px solid black;
-                                  border-bottom: 0px solid black;
-                                  border-left: 0px solid black;
-                                  padding: 15px;
-                              }
-                    </style>
+                    %s
                     <script type="text/javascript">
                         function toggleDetails(id) {
                             // check to see if we are already showing the traceback
@@ -135,13 +144,16 @@ class HTMLWriter():
                         }
                     </script>
                 </head>
-                <body>""" % title
+                <body>""" % (title, css_str)
 
         html += """
-            <h1>%s</h1> 
-            <h3>Start time: %s</h3>
-            <h3>End time: %s</h3>
-            <h3>Duration: %s</h3>
+            <div id="header-image"></div>
+            <div class="header">
+                <h1 id="title">%s</h1> 
+                <h3>Start time: %s</h3>
+                <h3>End time: %s</h3>
+                <h3>Duration: %s</h3>
+            </div>
         """  % (
             title,
             start_time.strftime("%m-%d-%y %H:%M:%S"),
@@ -207,11 +219,11 @@ class HTMLWriter():
                 <tr>
                     <td colspan="6" class="class-totals-container">
                         <table class='class-totals-table'>
-                            <td>Successes</td>
+                            <td>Successes:</td>
                             <td colspan="1">%d</td>
-                            <td>Failures</td>
+                            <td>Failures:</td>
                             <td colspan="1">%d</td>
-                            <td>Skipped</td>
+                            <td>Skipped:</td>
                             <td colspan="1">%d</td>
                         </table>
                     </td>
@@ -313,6 +325,12 @@ class HTMLLogger(TestLogger):
     start_time = None
     end_time = None
     test_title = None
+    css_path = None
+
+    def __init__(self, log_dir=None, log_level=LogLevel.ERROR, css_path=None):
+        TestLogger.__init__(self, log_dir=log_dir, log_level=log_level)
+        if css_path: css_path = os.path.abspath(css_path) 
+        self.css_path = css_path
 
     def startingTests(self):
         if not self.log_dir: self.log_dir = "."
@@ -331,7 +349,13 @@ class HTMLLogger(TestLogger):
     
     def finishedTests(self):
         self.end_time = datetime.datetime.now()
-        HTMLWriter.write_test_results(self.results, self.start_time, self.end_time, self.out)
+        HTMLWriter.write_test_results(
+            self.results, 
+            self.start_time, 
+            self.end_time, 
+            self.out, 
+            css_path=self.css_path
+        )
 
     def runningTestFunction(self, instance, func, thread_num=None):
         result = TestResult(instance, func, thread=thread_num)

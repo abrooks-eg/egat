@@ -20,7 +20,7 @@ def main():
 
     # Set up the TestRunner and TestLogger
     if args.log:
-        logger = HTMLLogger(log_dir=args.log)
+        logger = HTMLLogger(log_dir=args.log, css_path=args.css_path)
     else:
         logger = SimpleTextLogger()
     logger.set_log_level(log_level)

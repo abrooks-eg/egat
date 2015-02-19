@@ -124,15 +124,15 @@ class HTMLWriter():
                     <title>%s</title>
                     %s
                     <script type="text/javascript">
-                        function toggleDetails(id) {
+                        function toggleFuncDetails(id) {
                             // check to see if we are already showing the traceback
-                            testResultRow = document.querySelector("tr[id='" + id + "-result']")
-                            detailsRow = document.querySelector("tr[id='" + id + "-details']")
-                            hiddenDetailsDiv = document.querySelector("div[id='" + id + "-hidden-details']")
+                            var testResultRow = document.querySelector("tr[id='" + id + "-result']")
+                            var detailsRow = document.querySelector("tr[id='" + id + "-details']")
+                            var hiddenDetailsDiv = document.querySelector("div[id='" + id + "-hidden-details']")
 
                             if (detailsRow === null) {
                                 // the details are hidden; show it.
-                                details = hiddenDetailsDiv.innerHTML
+                                var details = hiddenDetailsDiv.innerHTML
                                 detailsRow = document.createElement('tr')
                                 detailsRow.setAttribute('id', id + "-details")
                                 detailsRow.innerHTML = "<td></td><td></td><td class='details' colspan='4'>" + details + "</td>"
@@ -140,6 +140,33 @@ class HTMLWriter():
                             } else {
                                 // the details are already showing; hide them.
                                 detailsRow.parentNode.removeChild(detailsRow)
+                            }
+                        }
+
+                        function toggleClassDetails(button, id) {
+                            var classRow = document.querySelector("tr[id='" + id + "-class']")
+                            var rowsToHide = []
+
+                            if (classRow.className.indexOf("collapsed") > -1) {
+                                // classRow is collapsed. Expand it.
+                                button.textContent = "-"
+                                classRow.className = classRow.className.replace("collapsed", "")
+                                var currentNode = classRow.nextElementSibling
+                                while (currentNode.className == null ||
+                                    currentNode.className.indexOf("class-header") == -1) {
+                                    currentNode.style.display = "table-row"
+                                    currentNode = currentNode.nextElementSibling
+                                }
+                            } else {
+                                // classRow is expanded. Collapse it.
+                                button.textContent = "+"
+                                classRow.className = classRow.className + " collapsed"
+                                var currentNode = classRow.nextElementSibling
+                                while (currentNode.className == null ||
+                                    currentNode.className.indexOf("class-header") == -1) {
+                                    currentNode.style.display = "none"
+                                    currentNode = currentNode.nextElementSibling
+                                }
                             }
                         }
                     </script>
@@ -213,8 +240,11 @@ class HTMLWriter():
 
             # Add class header
             html += """
-                <tr class="class-header">
-                    <td colspan="6">%s</td>
+                <tr id="%s-class" class="class-header">
+                    <td>
+                        <a onclick="toggleClassDetails(this, %s)">-</a>
+                    </td>
+                    <td colspan="5">%s</td>
                 </tr>
                 <tr>
                     <td colspan="6" class="class-totals-container">
@@ -228,7 +258,8 @@ class HTMLWriter():
                         </table>
                     </td>
                 </tr>
-                """ % (class_name, successes, failures, skipped)
+                """ % (i, i, class_name, successes, failures, skipped)
+            i += 1
 
             for env_str, test_results in tests_by_env.items():
                 if test_results[0].environment:
@@ -263,7 +294,7 @@ class HTMLWriter():
                             <td class='%s'>%s</td>
                             <td class='thread-num'>%s</td>
                             <td class="details-btn">
-                                <a onclick="toggleDetails(%s)">Details</a>
+                                <a onclick="toggleFuncDetails(%s)">Details</a>
                             </td>
                             <td style="display:none">
                                 <div id="%s-hidden-details" class='details'>

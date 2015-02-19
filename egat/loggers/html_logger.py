@@ -4,6 +4,7 @@ import os
 import time
 import cgi
 import itertools
+import inspect
 from egat.loggers.test_logger import TestLogger
 from egat.loggers.test_logger import LogLevel
 from egat.test_result import TestResult
@@ -74,7 +75,7 @@ class HTMLWriter():
                                   background-color: rgb(240, 240, 240);
                                   cursor: pointer;
                               }
-                              .traceback {
+                              .details {
                                   font-family: "Andale Mono";
                                   font-size: 10pt;
                                   width: 700px;
@@ -117,19 +118,19 @@ class HTMLWriter():
                         function toggleDetails(id) {
                             // check to see if we are already showing the traceback
                             testResultRow = document.querySelector("tr[id='" + id + "-result']")
-                            tracebackRow = document.querySelector("tr[id='" + id + "-traceback']")
-                            hiddenTracebackDiv = document.querySelector("div[id='" + id + "-hidden-traceback']")
+                            detailsRow = document.querySelector("tr[id='" + id + "-details']")
+                            hiddenDetailsDiv = document.querySelector("div[id='" + id + "-hidden-details']")
 
-                            if (tracebackRow === null) {
-                                // the traceback is hidden; show it.
-                                traceback = hiddenTracebackDiv.innerHTML
-                                tracebackRow = document.createElement('tr')
-                                tracebackRow.setAttribute('id', id + "-traceback")
-                                tracebackRow.innerHTML = "<td></td><td class='traceback' colspan='4'>" + traceback + "</td>"
-                                testResultRow.parentNode.insertBefore(tracebackRow, testResultRow.nextSibling)
+                            if (detailsRow === null) {
+                                // the details are hidden; show it.
+                                details = hiddenDetailsDiv.innerHTML
+                                detailsRow = document.createElement('tr')
+                                detailsRow.setAttribute('id', id + "-details")
+                                detailsRow.innerHTML = "<td></td><td></td><td class='details' colspan='4'>" + details + "</td>"
+                                testResultRow.parentNode.insertBefore(detailsRow, testResultRow.nextSibling)
                             } else {
-                                // the traceback is already showing; hide it.
-                                tracebackRow.parentNode.removeChild(tracebackRow)
+                                // the details are already showing; hide them.
+                                detailsRow.parentNode.removeChild(detailsRow)
                             }
                         }
                     </script>
@@ -227,10 +228,21 @@ class HTMLWriter():
                         </tr>""" % test_results[0].environment_string()
 
                 for result in test_results:
+                    # Format the traceback
+                    traceback_str = ""
                     if result.traceback:
-                        result.traceback = cgi.escape(result.traceback)
-                        result.traceback = result.traceback.replace(' ', '&nbsp;')
-                        result.traceback = result.traceback.replace('\n', '<br />')
+                        traceback_str = cgi.escape(result.traceback)
+                        traceback_str = traceback_str.replace(' ', '&nbsp;')
+                        traceback_str = traceback_str.replace('\n', '<br />')
+
+                    # Format the resource_groups
+                    def print_resource_groups(rgroup):
+                        if inspect.isclass(rgroup):
+                            return rgroup.__name__
+                        else:
+                            return str(rgroup)
+                    resource_group_str = map(print_resource_groups, result.resource_groups)
+
                     row = """
                         <tr id="%s-result" class="test-result">
                             <td class='empty-cell'></td>
@@ -242,10 +254,29 @@ class HTMLWriter():
                                 <a onclick="toggleDetails(%s)">Details</a>
                             </td>
                             <td style="display:none">
-                                <div id="%s-hidden-traceback" class='traceback'>%s</div
+                                <div id="%s-hidden-details" class='details'>
+                                    Resource Groups: %s<br/>
+                                    Execution Groups: %s<br/>
+                                    Start Time: %s<br />
+                                    End Time: %s<br />
+                                    Duration: %s<br />
+                                    %s
+                                </div>
                             </td>
                         </tr>
-                        """ % (i, result.func.__name__, result.status, result.status, result.thread + 1, i, i, result.traceback)
+                        """ % (i, 
+                               result.func.__name__, 
+                               result.status, 
+                               result.status, 
+                               result.thread + 1, 
+                               i, 
+                               i, 
+                               resource_group_str, 
+                               result.execution_groups, 
+                               result.start_time.strftime("%m-%d-%y %H:%M:%S"),
+                               result.end_time.strftime("%m-%d-%y %H:%M:%S"),
+                               str(result.end_time - result.start_time),
+                               traceback_str)
 
                     html += row
                     i += 1
@@ -304,10 +335,12 @@ class HTMLLogger(TestLogger):
 
     def runningTestFunction(self, instance, func, thread_num=None):
         result = TestResult(instance, func, thread=thread_num)
+        result.start_time = datetime.datetime.now()
         self.current_tests[(instance, func, thread_num)] = result
 
     def finishedTestFunction(self, instance, func, thread_num=None, browser=None):
         result = self.current_tests.pop((instance, func, thread_num))
+        result.end_time = datetime.datetime.now()
         if not result.status: result.status = TestResultType.SUCCESS
         self.results.put(result)
 
@@ -316,6 +349,8 @@ class HTMLLogger(TestLogger):
 
     def skippingTestFunction(self, instance, func, thread_num=None):
         result = TestResult(instance, func, status=TestResultType.SKIPPED, thread=thread_num)
+        result.start_time = datetime.datetime.now()
+        result.end_time = datetime.datetime.now()
         self.results.put(result)
 
     def foundException(self, instance, func, e, tb, thread_num=None, browser=None):

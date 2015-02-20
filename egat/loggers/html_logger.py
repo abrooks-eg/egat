@@ -27,6 +27,14 @@ class HTMLWriter():
         }
         .results-table {
             border-collapse: collapse;
+            width: 1100px;
+        }
+        .totals-table {
+            border-collapse: collapse;
+        }
+        .totals-table td {
+            padding: 10px;
+            border: 1px solid black;
         }
         .results-table th {
             border: 1px solid black;
@@ -54,7 +62,7 @@ class HTMLWriter():
         }
         .function-name {
             font-family: "Andale Mono";
-            width: 700px;
+            width: 670px;
         }
         .thread-num {
             text-align: center;
@@ -65,10 +73,19 @@ class HTMLWriter():
             background-color: rgb(240, 240, 240);
             cursor: pointer;
         }
+        .expand-collapse-btn {
+            text-decoration: none;
+            text-align: center;
+            background-color: rgb(240, 240, 240);
+            cursor: pointer;
+            font-family: "Courier New", "sans-serif";
+            font-size: 18pt;
+            min-width: 45px;
+        }
         .details {
             font-family: "Andale Mono";
             font-size: 10pt;
-            width: 700px;
+            width: 670px;
         }
         .success {
             color: #276943;
@@ -149,7 +166,7 @@ class HTMLWriter():
 
                             if (classRow.className.indexOf("collapsed") > -1) {
                                 // classRow is collapsed. Expand it.
-                                button.textContent = "-"
+                                button.textContent = "[-]"
                                 classRow.className = classRow.className.replace("collapsed", "")
                                 var currentNode = classRow.nextElementSibling
                                 while (currentNode.className == null ||
@@ -159,7 +176,7 @@ class HTMLWriter():
                                 }
                             } else {
                                 // classRow is expanded. Collapse it.
-                                button.textContent = "+"
+                                button.textContent = "[+]"
                                 classRow.className = classRow.className + " collapsed"
                                 var currentNode = classRow.nextElementSibling
                                 while (currentNode.className == null ||
@@ -197,7 +214,7 @@ class HTMLWriter():
 
         # Add totals row
         html += """
-            <table class='results-table'>
+            <table class='totals-table'>
                 <td>Successes</td>
                 <td class="success" colspan="1">%d</td>
                 <td>Failures</td>
@@ -240,22 +257,22 @@ class HTMLWriter():
 
             # Add class header
             html += """
-                <tr id="%s-class" class="class-header">
-                    <td>
-                        <a onclick="toggleClassDetails(this, %s)">-</a>
+                <tr id="%s-class" class="class-header collapsed">
+                    <td class="expand-collapse-btn">
+                        <a onclick="toggleClassDetails(this, %s)">[+]</a>
                     </td>
-                    <td colspan="5">%s</td>
-                </tr>
-                <tr>
-                    <td colspan="6" class="class-totals-container">
-                        <table class='class-totals-table'>
-                            <td>Successes:</td>
-                            <td colspan="1">%d</td>
-                            <td>Failures:</td>
-                            <td colspan="1">%d</td>
-                            <td>Skipped:</td>
-                            <td colspan="1">%d</td>
-                        </table>
+                    <td colspan="5">
+                        <span style="float:left;">
+                            %s                        
+                        </span>
+                        <span style="float:right;">
+                            Successes:
+                            %d
+                            Failures:
+                            %d
+                            Skipped:
+                            %d
+                        </span>
                     </td>
                 </tr>
                 """ % (i, i, class_name, successes, failures, skipped)
@@ -265,7 +282,7 @@ class HTMLWriter():
                 if test_results[0].environment:
                     # Add environment header
                     html += """
-                        <tr class="environment-header">
+                        <tr class="environment-header" style="display:none;">
                             <td></td>
                             <td colspan="5">%s</td>
                         </tr>""" % test_results[0].environment_string()
@@ -287,7 +304,7 @@ class HTMLWriter():
                     resource_group_str = map(print_resource_groups, result.resource_groups)
 
                     row = """
-                        <tr id="%s-result" class="test-result">
+                        <tr id="%s-result" class="test-result" style="display:none">
                             <td class='empty-cell'></td>
                             <td class='empty-cell'></td>
                             <td class='function-name'>%s</td>

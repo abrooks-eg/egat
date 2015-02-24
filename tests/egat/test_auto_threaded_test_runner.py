@@ -1,5 +1,5 @@
 import unittest
-from egat.test_runner import TestRunner
+from egat.auto_threaded_test_runner import AutoThreadedTestRunner
 
 class TestBuildTests(unittest.TestCase):
     def test_basic(self):
@@ -20,7 +20,7 @@ class TestBuildTests(unittest.TestCase):
             },
         ]
 
-        flat_tests = TestRunner._build_tests(test_obj)
+        flat_tests = AutoThreadedTestRunner._build_tests(test_obj)
         self.assertEqual(sorted(flat_tests), sorted(expected))
 
     def test_basic_configuration(self):
@@ -51,7 +51,7 @@ class TestBuildTests(unittest.TestCase):
             },
         ]
 
-        flat_tests = TestRunner._build_tests(test_obj)
+        flat_tests = AutoThreadedTestRunner._build_tests(test_obj)
         self.assertEqual(sorted(flat_tests), sorted(expected))
 
     def test_basic_single_environment(self):
@@ -84,7 +84,7 @@ class TestBuildTests(unittest.TestCase):
             },
         ]
 
-        flat_tests = TestRunner._build_tests(test_obj)
+        flat_tests = AutoThreadedTestRunner._build_tests(test_obj)
         self.assertEqual(sorted(flat_tests), sorted(expected))
 
     def test_basic_multiple_environments(self):
@@ -157,7 +157,7 @@ class TestBuildTests(unittest.TestCase):
             },
         ]
 
-        flat_tests = TestRunner._build_tests(test_obj)
+        flat_tests = AutoThreadedTestRunner._build_tests(test_obj)
         self.assertEqual(sorted(flat_tests), sorted(expected))
 
     def test_multiple_environments_with_config(self):
@@ -252,7 +252,7 @@ class TestBuildTests(unittest.TestCase):
             },
         ]
 
-        flat_tests = TestRunner._build_tests(test_obj)
+        flat_tests = AutoThreadedTestRunner._build_tests(test_obj)
         self.assertEqual(sorted(flat_tests), sorted(expected))
 
     def test_nested(self):
@@ -341,7 +341,7 @@ class TestBuildTests(unittest.TestCase):
             },
         ]
 
-        flat_tests = TestRunner._build_tests(test_obj)
+        flat_tests = AutoThreadedTestRunner._build_tests(test_obj)
         self.assertEqual(sorted(flat_tests), sorted(expected))
 
     def test_nested_with_environments(self):
@@ -549,7 +549,7 @@ class TestBuildTests(unittest.TestCase):
             },
         ]
 
-        flat_tests = TestRunner._build_tests(test_obj)
+        flat_tests = AutoThreadedTestRunner._build_tests(test_obj)
         self.assertEqual(sorted(flat_tests), sorted(expected))
 
     def test_nested_mixed(self):
@@ -638,6 +638,6 @@ class TestBuildTests(unittest.TestCase):
             },
         ]
 
-        flat_tests = TestRunner._build_tests(test_obj)
+        flat_tests = AutoThreadedTestRunner._build_tests(test_obj)
         self.assertEqual(sorted(flat_tests), sorted(expected))
         

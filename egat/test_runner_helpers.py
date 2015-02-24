@@ -1,9 +1,6 @@
 from collections import deque
 from threading import Thread
-from threading import Lock
-from egat.testset import ExecutionOrder
 import sys
-import os
 import traceback
 
 class WorkProvider():
@@ -23,7 +20,7 @@ class WorkProvider():
         """Finds and returns the next available node of work and returns it. When 
         the work is done the 'finished_with_node' method must be called. If no work 
         is currently available, this method will return None."""
-        return self._work_nodes.popleft()
+        return self._work_nodes.popleft() if self._work_nodes else None
 
     def finished_with_node(self, work_node):
         """Takes a work node and releases its resources. Must be called for each 
@@ -141,3 +138,33 @@ class WorkerThread(Thread):
             return func_or_class[0].execution_groups
         else:
             return []
+
+class WorkNode(object):
+    """A class that represents a node in the work of a WorkPool. Each node
+    represents a unit of work (tests to be run) and defines the resources it needs
+    to share with other nodes (SharedResources). Each node has edges that connect
+    it to other nodes that share its SharedResources and thus cannot be run at the
+    same time."""
+    resources = None # a list of SharedResource classes this node needs
+    test_class = None # The class containing tests for this node
+    test_funcs = None # The tests functions for this node
+    test_config = None
+    test_env = None
+
+    def __init__(self, test_class, test_funcs, config={}, env={}):
+        """Takes a TestSet subclass, and a list of test methods in that TestSet
+        subclass."""
+        self.test_class = test_class
+        self.test_funcs = test_funcs
+        self.test_config = config
+        self.test_env = env
+        self.resources = set()
+
+        # Add class resources
+        class_resources = getattr(test_class, 'resources', [])
+        self.resources = self.resources.union(set(class_resources))
+
+        # Add function resources
+        for func in test_funcs:
+            for resource in getattr(func, 'resources', []):
+                self.resources.add(resource)

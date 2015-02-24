@@ -1,7 +1,5 @@
 from egat.test_workers import WorkerThread
-from egat.test_workers import WorkPool
-from egat.test_workers import WorkManager
-from egat.loggers.simple_text_logger import SimpleTextLogger
+from egat.test_runner_helpers import WorkProvider
 from egat.execution_groups import execution_group
 import unittest
 
@@ -31,7 +29,7 @@ class MockWorkPool():
 
 class TestWorkerThread(unittest.TestCase):
     def test_has_failed_ex_groups(self):
-        wp = MockWorkPool()
+        wp = WorkProvider()
         wp.failed_ex_groups = set()
 
         self.assertFalse(

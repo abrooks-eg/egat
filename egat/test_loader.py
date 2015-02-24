@@ -1,4 +1,4 @@
-from egat.test_workers import WorkNode
+from egat.test_runner_helpers import WorkNode
 from egat.testset import TestSet
 from egat.testset import ExecutionOrder
 import pkgutil
@@ -103,11 +103,10 @@ class TestLoader():
         else:
             # if it is ordered then the test functions must all be run together
             work_nodes.append(WorkNode(cls, cls.load_tests(), config, env))
-
         return work_nodes
 
     @staticmethod
-    def get_work_nodes_from_function_name(func_name, config={}, env={}):
+    def get_work_nodes_from_function_name(full_function_name, config={}, env={}):
         """Takes a fully-qualified function name (i.e. 'pkg.ClassName.function_name') 
         and returns it as a single WorkNode in a list."""
         class_name = '.'.join(full_function_name.split('.')[0:-1])

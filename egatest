@@ -1,10 +1,9 @@
 #!/usr/bin/python
 from egat.loggers.simple_text_logger import SimpleTextLogger
 from egat.loggers.html_logger import HTMLLogger
-from egat.loggers.test_logger import LogLevel
 from egat.auto_threaded_test_runner import AutoThreadedTestRunner
 from egat.user_threaded_test_runner import UserThreadedTestRunner
-from egat.argument_parser import ArgumentParser
+from egat.parse import ArgumentParser
 
 def main():
     """The command-line interface for the TestRunner class."""

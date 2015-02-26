@@ -1,4 +1,3 @@
-from egat.test_workers import WorkManager
 from egat.test_loader import TestLoader
 from egat.test_runner_helpers import WorkProvider
 from egat.test_runner_helpers import WorkerThread

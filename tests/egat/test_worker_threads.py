@@ -1,4 +1,4 @@
-from egat.test_workers import WorkerThread
+from egat.test_runner_helpers import WorkerThread
 from egat.test_runner_helpers import WorkProvider
 from egat.execution_groups import execution_group
 import unittest

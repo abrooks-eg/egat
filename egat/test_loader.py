@@ -51,12 +51,21 @@ class TestLoader():
         is_module = False
         is_class = False
         is_fn = False
+        descriptor_len = len(test_name.split('.' ))
+        unrecogized_test_descriptor = ImportError("Test descriptor '%s' is not importable as a module, class, or function." % test_name)
         try: is_module = __import__(test_name)
         except ImportError:
-            try: is_class = __import__('.'.join(test_name.split('.')[0:-1]))
-            except ImportError:
-                try: is_fn = __import__('.'.join(test_name.split('.')[0:-2]))
-                except ImportError: pass
+            if descriptor_len > 1:
+                try: is_class = __import__('.'.join(test_name.split('.')[0:-1]))
+                except ImportError:
+                    if descriptor_len > 2:
+                        try: is_fn = __import__('.'.join(test_name.split('.')[0:-2]))
+                        except ImportError:
+                            raise unrecogized_test_descriptor
+                    else:
+                        raise unrecogized_test_descriptor
+            else:
+                raise unrecogized_test_descriptor
 
         if is_module:
             load_func = TestLoader.get_work_nodes_from_module_name
@@ -151,7 +160,10 @@ class TestLoader():
         module_name = '.'.join(full_class_name.split('.')[0:-1])
         __import__(module_name)
         root_module = sys.modules[module_name]
-        return getattr(root_module, class_name)
+        try:
+            return getattr(root_module, class_name)
+        except AttributeError:
+            raise AttributeError("Module '%s' has no attribute '%s'" % (module_name, class_name))
 
     @staticmethod
     def is_testset(cls):

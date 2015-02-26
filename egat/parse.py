@@ -6,42 +6,44 @@ class ParseError(Exception):
 
 class ConfigurationValidator():
     @staticmethod
-    def validate_config_json(json):
+    def validate_config_json(pjson):
         """Takes the parsed JSON (output from json.load) from a configuration file 
         and checks it for common errors."""
         # Make sure that the root json is a dict
-        if type(json) is not dict:
+        if type(pjson) is not dict:
             raise ParseError("Configuration file should contain a single JSON object/dictionary. Instead got a %s." 
-                             % type(json))
+                             % type(pjson))
 
         # if 'configuration' is present it should be a dict of strings and numbers.
         # The ArgumentParser will do the rest of the validation.
-        configuration = json.get('configuration', {})
+        configuration = pjson.get('configuration', {})
         if type(configuration) is not dict:
-            raise ParseError('''"configuration" object should be a dict, got %s 
-                                 instead.''' % type(configuration))
+            raise ParseError('''"configuration" object should be a dict, got %s instead.''' 
+                             % type(configuration))
 
         # Make sure that the 'tests' key is present 
         try:
-            tests = json["tests"]
+            tests = pjson["tests"]
         except KeyError:
             raise KeyError("Configuration file requires 'tests' attribute.")
 
         # Verify that 'options' is a dict if present
-        options = json.get('options', {})
+        options = pjson.get('options', {})
         if type(options) is not dict:
             raise ParseError('"options" attribute must be a dictionary"')
 
         # We need to know whether --user-defined-threads option is present to do 
         # the rest of the validation.
         if '-u' in options.keys() or '--user-defined-threads' in options.keys():
-            ConfigurationValidator.validate_user_threaded_json(json)
+            ConfigurationValidator.validate_user_threaded_json(pjson)
         else:
-            ConfigurationValidator.validate_auto_threaded_tests(tests)
+            ConfigurationValidator.validate_auto_threaded_json(pjson)
 
     @staticmethod
-    def validate_user_threaded_json(json):
-        tests = json["tests"]
+    def validate_user_threaded_json(pjson):
+        """Takes a parsed JSON dict representing a set of tests in the user-threaded 
+        format and validates it."""
+        tests = pjson["tests"]
 
         # Verify that 'tests' is a two dimensional list
         is_2d_list = lambda ls: len(ls) == len(filter(lambda l: type(l) is list, ls))
@@ -53,28 +55,32 @@ class ConfigurationValidator():
             for test in sublist:
                 if type(test) is not unicode:
                     raise TypeError(
-                        """Expected a unicode string but got %s.
-                        'tests' should be a two-dimensional list of strings when '--user-defined-threads is present.'""" 
+                        "Expected a unicode string but got %s. 'tests' should be a two-dimensional list of strings when '--user-defined-threads is present.'" 
                         % test
                     )
 
         # Verify that 'environments' key is not present
-        if json.get("environments", []):
+        try:
+            pjson["environments"]
             raise ParseError("'environments' list is not allowed when --user-defined-threads is present.")
+        except KeyError: pass
+
 
     @staticmethod
-    def validate_auto_threaded_tests(json):
-        # json should be a dict or unicode
-        if type(json) is not dict or type(json) is not unicode:
+    def validate_auto_threaded_json(pjson):
+        """Takes a parsed JSON dict representing a set of tests in the auto-threaded
+        format and validates it, descending recursively if necessary."""
+        # pjson should be a dict or unicode
+        if not type(pjson) is dict:
             raise ParseError("Expected a JSON object/dictionary or a string representing a test. Instead got %s." 
-                             % json)
+                             % pjson)
 
         # Make sure that the 'tests' key is present 
         try:
-            tests = json["tests"]
+            tests = pjson["tests"]
         except KeyError:
             raise KeyError("Test object requires 'tests' attribute.\nObject: %s" % 
-                           json.dumps(tests))
+                           json.dumps(pjson))
 
         # Verify that tests is a list
         if type(tests) is not list:
@@ -84,14 +90,14 @@ class ConfigurationValidator():
             )
 
         # Verify that 'options' is a dict if present
-        options = json.get('options', {})
+        options = pjson.get('options', {})
         if type(options) is not dict:
             raise ParseError('"options" attribute must be a dictionary')
 
         # Verify that 'environments' is a list of dicts if present
-        environments = json.get('environments', [])
-        is_list_of_dicts = lambda ls: len(ls) == len(map(lambda d: type(d) is dict), ls)
-        if type(options) is not list or not is_list_of_dicts(environments):
+        environments = pjson.get('environments', [])
+        is_list_of_dicts = lambda ls: len(ls) == len(filter(lambda d: type(d) is dict, ls))
+        if type(environments) is not list or not is_list_of_dicts(environments):
             raise ParseError('"environments" attribute must be a list of dictionaries. Instead got %s.' % environments)
 
         for test in tests:
@@ -100,7 +106,7 @@ class ConfigurationValidator():
                 pass
             else:
                 # Recur
-                ConfigurationValidator.validate_auto_threaded_tests(test)
+                ConfigurationValidator.validate_auto_threaded_json(test)
 
 class ArgumentParser():
    """A custom argument parser used to parse the command-line arguments or

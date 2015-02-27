@@ -166,7 +166,7 @@ class ArgumentParser():
       )
 
       parser.add_argument(
-         'test_descriptor',
+         'tests',
          type=str,
          nargs='*',
          help="""The fully qualified package, module, class, or function names of the

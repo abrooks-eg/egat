@@ -1,2 +1,3 @@
-To use the configuration file in this directory run this command from the root of the project:
-python test_runner.py -c examples/config_example/config_example.cfg
+This example showcases basic configuration file usage. To run this example run this
+command from the root directory of the project:
+    ./egatest -c examples/config_example/config_example.json

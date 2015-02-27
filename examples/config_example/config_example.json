@@ -1,3 +1,14 @@
-examples.config_example.test1.Test1
-examples.config_example.test2.Test2
-examples.config_example.test3.Test3
+{
+  "options": {
+    "-t": 3
+  },
+  "tests": [
+    "examples.config_example.test1.Test1",
+    "examples.config_example.test2.Test2",
+    "examples.config_example.test3.Test3"
+  ],
+  "configuration": {
+    "base_url": "http://localhost",
+    "port": 8000
+  }
+}

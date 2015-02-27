@@ -15,7 +15,7 @@ setup(
     name = 'egat',
     packages = ['egat', 'egat.loggers'], # this must be the same as the name above
     scripts = ['egatest'],
-    version = '0.9.0',
+    version = '0.9.1',
     description = 'An automated testing toolkit',
     author = 'E-gineering LLC',
     author_email = 'eg.pypi@e-gineering.com', # contact email

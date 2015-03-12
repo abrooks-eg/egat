@@ -1,0 +1,29 @@
+{
+  "options": {
+    "-t": 3,
+    "-l": "C:/Users/Brenda/EGAT/jquery_logs/",
+    "--log-level": "ERROR"
+  },
+  "tests": [
+    "drag_n_drop.Test1",
+    "accordion.Test2",
+    "datepicker.Test3",
+    "slider.Test4",
+    "toggle_class.Test5",
+    "selectmenu.Test6",
+    "hide.Test7",
+    "tabs.Test8",
+    "autocomplete.Test9"
+  ],
+  "configuration": {
+    "base_url": "http://jqueryui.com",
+    "port": 8000
+  },
+  "environments": [
+       {"browser": "Chrome",
+       "browser": "Firefox",
+       "browser": "Safari",
+       "browser": "IE"
+       }
+  ]
+}

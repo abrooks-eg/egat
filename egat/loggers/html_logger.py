@@ -5,12 +5,14 @@ import time
 import cgi
 import itertools
 import inspect
+import shutil
 from egat.loggers.test_logger import TestLogger
 from egat.loggers.test_logger import LogLevel
 from egat.test_result import TestResult
 from itertools import groupby
 from Queue import Queue
 from Queue import Empty
+from pkg_resources import Requirement, resource_filename, DistributionNotFound
 
 class TestResultType():
     SUCCESS = "success"
@@ -20,119 +22,23 @@ class TestResultType():
 
 class HTMLWriter():
 
-    default_css = """
-        body {
-            font-family: "Verdana";
-            font-size: 12pt;
-        }
-        .results-table {
-            border-collapse: collapse;
-            width: 1100px;
-        }
-        .totals-table {
-            border-collapse: collapse;
-        }
-        .totals-table td {
-            padding: 10px;
-            border: 1px solid black;
-        }
-        .results-table th {
-            border: 1px solid black;
-            padding: 15px;
-            background-color: rgb(240, 240, 240);
-            font-weight: 300;
-            font-size: 14pt;
-        }
-        .results-table tr {
-            border: 1px solid black;
-        }
-        .results-table td {
-            border: 1px solid black;
-            padding: 15px;
-        }
-        .class-header {
-            background-color: rgb(240, 240, 240);
-            font-family: "Verdana";
-            font-size: 14pt;
-        }
-        .environment-header {
-            background-color: rgb(240, 240, 240);
-            font-family: "Verdana";
-            font-size: 14pt;
-        }
-        .function-name {
-            font-family: "Andale Mono";
-            width: 670px;
-        }
-        .thread-num {
-            text-align: center;
-        }
-        .details-btn {
-            text-decoration: underline;
-            text-align: center;
-            background-color: rgb(240, 240, 240);
-            cursor: pointer;
-        }
-        .expand-collapse-btn {
-            text-decoration: none;
-            text-align: center;
-            background-color: rgb(240, 240, 240);
-            cursor: pointer;
-            font-family: "Courier New", "sans-serif";
-            font-size: 18pt;
-            min-width: 45px;
-        }
-        .details {
-            font-family: "Andale Mono";
-            font-size: 10pt;
-            width: 670px;
-        }
-        .success {
-            color: #276943;
-            border-color: #276943;
-            background-color: #95d7b2;
-            text-align: center;
-        }
-        .failure {
-            color: #671a10;
-            border-color: #671a10;
-            background-color: #e87a6a;
-            text-align: center;
-        }
-        .skipped {
-            color: #716d06;
-            border-color: #716d06;
-            background-color: #FFF692;
-            text-align: center;
-        }
-        .empty-total {
-            text-align: center;
-        }
-        .class-totals-container {
-            padding: 0px !important;
-            border-collapse: collapse !important;
-            background-color: rgb(240, 240, 240);
-        }
-        .class-totals-table td {
-            border-top: 0px solid black;
-            border-right: 0px solid black;
-            border-bottom: 0px solid black;
-            border-left: 0px solid black;
-            padding: 15px;
-        }
-        """
+    @staticmethod
+    def copy_resources_to_log_dir(log_dir):
+        """Copies the necessary static assets to the log_dir and returns the path 
+        of the main css file."""
+        css_path = resource_filename(Requirement.parse("egat"), "/egat/data/default.css")
+        header_path = resource_filename(Requirement.parse("egat"), "/egat/data/egat_header.png")
+        shutil.copyfile(css_path, log_dir + "/style.css")
+        shutil.copyfile(header_path, log_dir + "/egat_header.png")
+
+        return log_dir + "/style.css"
 
     @staticmethod
-    def write_test_results(test_results, start_time, end_time, fp, css_path=None):
+    def write_test_results(test_results, start_time, end_time, fp, css_path):
         """Takes a list of TestResult objects and an open file pointer and writes 
         the test results as HTML to the given file."""
 
-        css_str = ""
-        if css_path:
-            css_str = '<link rel="stylesheet" href="%s" type="text/css">' % css_path
-        else:
-            css_str = '<style>%s</style>' % HTMLWriter.default_css
-
+        css_str = '<link rel="stylesheet" href="%s" type="text/css">' % css_path
         title = "Test Run %s" % start_time.strftime("%m-%d-%y %H:%I %p")
 
         html = """
@@ -191,7 +97,9 @@ class HTMLWriter():
                 <body>""" % (title, css_str)
 
         html += """
-            <div id="header-image"></div>
+            <div id="header-image">
+                <img src="egat_header.png"/>
+            </div>
             <div class="header">
                 <h1 id="title">%s</h1> 
                 <h3>Start time: %s</h3>
@@ -255,9 +163,15 @@ class HTMLWriter():
             failures = len(filter(lambda r: r.status == TestResultType.FAILURE, all_results))
             skipped = len(filter(lambda r: r.status == TestResultType.SKIPPED, all_results))
 
+            row_classes = "class-header collapsed"
+            if failures > 0:
+                row_classes += " failure"
+            elif skipped > 0:
+                row_classes += " skipped"
+
             # Add class header
             html += """
-                <tr id="%s-class" class="class-header collapsed">
+                <tr id="%s-class" class="%s">
                     <td class="expand-collapse-btn">
                         <a onclick="toggleClassDetails(this, %s)">[+]</a>
                     </td>
@@ -275,7 +189,7 @@ class HTMLWriter():
                         </span>
                     </td>
                 </tr>
-                """ % (i, i, class_name, successes, failures, skipped)
+                """ % (i, row_classes, i, class_name, successes, failures, skipped)
             i += 1
 
             for env_str, test_results in tests_by_env.items():
@@ -376,8 +290,12 @@ class HTMLLogger(TestLogger):
     css_path = None
 
     def __init__(self, log_dir=None, log_level=LogLevel.ERROR, css_path=None):
+        if log_dir: 
+            log_dir = os.path.abspath(log_dir)
+        if css_path: 
+            css_path = os.path.abspath(css_path) 
+
         TestLogger.__init__(self, log_dir=log_dir, log_level=log_level)
-        if css_path: css_path = os.path.abspath(css_path) 
         self.css_path = css_path
 
     def startingTests(self):
@@ -397,6 +315,10 @@ class HTMLLogger(TestLogger):
     
     def finishedTests(self):
         self.end_time = datetime.datetime.now()
+        if self.css_path:
+            shutil.copyfile(self.css_path, self.log_dir + "/style.css")
+        else:
+            self.css_path = HTMLWriter.copy_resources_to_log_dir(self.log_dir)
         HTMLWriter.write_test_results(
             self.results, 
             self.start_time, 
@@ -443,6 +365,6 @@ class HTMLLogger(TestLogger):
             func_str = HTMLLogger.format_function_name(classname, func)
             path = self.log_dir if self.log_dir else "."
             browser.save_screenshot('%s/%s.png' % (path, func_str))
-            with open('%s/%s.html' % (path, func_str), 'a') as f:
+            with open('%s/%s.html' % (path, func_str), 'w') as f:
                 f.write(browser.page_source.encode('utf8'))
 

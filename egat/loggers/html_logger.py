@@ -339,7 +339,7 @@ class HTMLLogger(TestLogger):
         self.results.put(result)
 
         if self.log_level == LogLevel.DEBUG:
-            self.log_debug_info(instance, func)
+            self.log_debug_info(browser, instance, func)
 
     def skippingTestFunction(self, instance, func, thread_num=None):
         result = TestResult(instance, func, status=TestResultType.SKIPPED, thread=thread_num)
@@ -354,15 +354,21 @@ class HTMLLogger(TestLogger):
         result.traceback = tb
 
         if self.log_level == LogLevel.ERROR:
-            self.log_debug_info(instance, func)
+            self.log_debug_info(browser, instance, func)
+            
+    @staticmethod
+    def format_function_name(instance, func):
+        """Takes a class name and a function from that class and returns a string
+        representing the given function."""
+        return "%s.%s.%s" % (func.__module__, instance.__class__.__name__, func.__name__)
 
-    def log_debug_info(self, classname, func):
+    def log_debug_info(self, browser, instance, func):
         """Takes a class instance and a function object. If the class has an 
         attribute called 'browser' this method will take a screenshot of the browser 
         window and save the page source to the log_dir."""
         browser = getattr(instance, 'browser', None)
         if browser:
-            func_str = HTMLLogger.format_function_name(classname, func)
+            func_str = HTMLLogger.format_function_name(instance, func)
             path = self.log_dir if self.log_dir else "."
             browser.save_screenshot('%s/%s.png' % (path, func_str))
             with open('%s/%s.html' % (path, func_str), 'w') as f:

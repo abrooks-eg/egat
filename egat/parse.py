@@ -1,5 +1,6 @@
 import argparse
 import json
+from egat.loggers.test_logger import LogLevel
 
 class ParseError(Exception):
     pass
@@ -209,6 +210,18 @@ class ArgumentParser():
          config_args.configuration = config_json.get('configuration', {})
          config_args.environments = config_json.get('environments', [])
 
-         return config_args
+         args = config_args
       else:
-         return cli_args
+         args = cli_args
+
+      
+      if args.log_level == "INFO":
+          args.log_level = LogLevel.INFO
+      elif args.log_level == "WARN":
+          args.log_level = LogLevel.WARN
+      elif args.log_level == "DEBUG":
+          args.log_level = LogLevel.DEBUG
+      else:
+          args.log_level = LogLevel.ERROR
+
+      return args

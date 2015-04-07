@@ -32,13 +32,13 @@ class WorkProvider():
         otherwise."""
         return len(self._work_nodes) > 0
 
-    def add_failed_ex_groups(self, failed_ex_groups):
+    def add_failed_ex_groups(self, failed_ex_groups, environment):
         """Takes a list of Execution Groups and adds them to this WorkProvider's list
         of failed Execution Groups. Should be called if any of this WorkProvider's tests 
         with execution groups fail."""
         self._failed_ex_groups = self._failed_ex_groups.union(failed_ex_groups)
 
-    def has_failed_ex_groups(self, *execution_groups):
+    def has_failed_ex_groups(self, environment, *execution_groups):
         """Takes a variable number of execution groups and returns True if any of 
         them have failed and False otherwise."""
         for ex_group in execution_groups:
@@ -82,7 +82,7 @@ class WorkerThread(Thread):
         # and don't instatiate the class or call setup
         if len(node.test_funcs) == 1:
             func = node.test_funcs[0]
-            if WorkerThread.has_failed_ex_groups(node.test_class, func, self.work_provider):
+            if WorkerThread.has_failed_ex_groups(node.test_class, func, node.test_env, self.work_provider):
                 self.logger.skippingTestFunction(instance, func, thread_num=self.thread_num)
                 return
                 
@@ -93,7 +93,7 @@ class WorkerThread(Thread):
         # Run all the test functions
         for func in node.test_funcs:
             # Check for failed execution groups
-            if WorkerThread.has_failed_ex_groups(node.test_class, func, self.work_provider):
+            if WorkerThread.has_failed_ex_groups(node.test_class, func, node.test_env, self.work_provider):
                 self.logger.skippingTestFunction(instance, func, thread_num=self.thread_num)
                 continue
 
@@ -104,7 +104,8 @@ class WorkerThread(Thread):
                 e = sys.exc_info()[0]
                 tb = traceback.format_exc()
                 self.work_provider.add_failed_ex_groups(
-                    WorkerThread.get_ex_groups(node.test_class, func)
+                    WorkerThread.get_ex_groups(node.test_class, func),
+                    node.test_env
                 )
 
 
@@ -117,7 +118,7 @@ class WorkerThread(Thread):
             instance.teardown()
 
     @staticmethod
-    def has_failed_ex_groups(test_class, func, work_provider):
+    def has_failed_ex_groups(test_class, func, env, work_provider):
         """Takes a class and a function object in that class and checks the 
         WorkProvider to see if any of the Execution Groups the function or class is a
         member of have failed. Returns True if the function is a member of a failed 
@@ -125,7 +126,7 @@ class WorkerThread(Thread):
         execution_groups = set(
             WorkerThread.get_ex_groups(test_class, func)
         )
-        return work_provider.has_failed_ex_groups(*execution_groups)
+        return work_provider.has_failed_ex_groups(env, *execution_groups)
 
     @staticmethod
     def get_ex_groups(*func_or_class):

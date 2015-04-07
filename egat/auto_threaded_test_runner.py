@@ -95,23 +95,29 @@ class AutoThreadedWorkProvider(WorkProvider):
     WorkerThreads to be executed."""
     _work_nodes = None
     _lock = None
-    # Execution groups that have failed. List items can be any type.
     _failed_ex_groups = None 
     _cur_resources = None
+    _environments = None
 
 
     def __init__(self):
         self._work_nodes = []
         self._lock = Lock()
-        self._failed_ex_groups = set()
+        self._failed_ex_groups = {}
         self._cur_resources = set()
+        self._environments = []
 
     def add_nodes(self, *work_nodes):
         """Takes a TestSet subclass object and a list of function objects in that 
         class and adds them as a node in the AutoThreadedWorkProvider's work. The class will be 
         instantiated and the functions called as tests."""
         self._lock.acquire()
+        # Add the new work nodes
         self._work_nodes += work_nodes
+        # Add any new environments to self.environments
+        for work_node in self._work_nodes:
+            if work_node.test_env not in self._environments:
+                self._environments.append(work_node.test_env)
         self._lock.release()
 
     def get_next_node(self):
@@ -145,20 +151,22 @@ class AutoThreadedWorkProvider(WorkProvider):
         self._lock.release()
         return has_work
 
-    def add_failed_ex_groups(self, failed_ex_groups):
+    def add_failed_ex_groups(self, failed_ex_groups, environment):
         """Takes a list of Execution Groups and adds them to this WorkProvider's list
         of failed Execution Groups. Should be called if any of this WorkProvider's tests 
         with execution groups fail."""
         self._lock.acquire()
-        self._failed_ex_groups = self._failed_ex_groups.union(failed_ex_groups)
+        idx = self._environments.index(environment)
+        self._failed_ex_groups[idx] = self._failed_ex_groups.get(idx, set()).union(failed_ex_groups)
         self._lock.release()
 
-    def has_failed_ex_groups(self, *execution_groups):
+    def has_failed_ex_groups(self, environment, *execution_groups):
         """Takes a variable number of execution groups and returns True if any of 
         them have failed and False otherwise."""
+        idx = self._environments.index(environment)
         self._lock.acquire()
         for ex_group in execution_groups:
-            if ex_group in self._failed_ex_groups:
+            if ex_group in self._failed_ex_groups.get(idx, set()):
                 self._lock.release()
                 return True
 

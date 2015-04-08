@@ -74,9 +74,7 @@ class WorkerThread(Thread):
     def run_tests_for_node(self, node):
         """Takes a WorkNode and runs the tests it contains."""
         classname = node.test_class.__name__
-        instance = node.test_class()
-        setattr(instance, 'configuration', node.test_config)
-        setattr(instance, 'environment', node.test_env)
+        instance = node.get_test_class_instance()
 
         # if this node contains only one function, check for failed execution groups
         # and don't instatiate the class or call setup
@@ -146,11 +144,14 @@ class WorkNode(object):
     to share with other nodes (SharedResources). Each node has edges that connect
     it to other nodes that share its SharedResources and thus cannot be run at the
     same time."""
-    resources = None # a list of SharedResource classes this node needs
+    class_resources = None # a list of SharedResource classes this class needs
     test_class = None # The class containing tests for this node
     test_funcs = None # The tests functions for this node
     test_config = None
     test_env = None
+    test_class_is_setup = None
+    test_class_is_torndown = None
+    _test_class_inst = None # An instance of the test class
 
     def __init__(self, test_class, test_funcs, config={}, env={}):
         """Takes a TestSet subclass, and a list of test methods in that TestSet
@@ -159,13 +160,17 @@ class WorkNode(object):
         self.test_funcs = test_funcs
         self.test_config = config
         self.test_env = env
+        self.test_class_is_setup = False
+        self.test_class_is_torndown = False
         self.resources = set()
 
         # Add class resources
-        class_resources = getattr(test_class, 'resources', [])
-        self.resources = self.resources.union(set(class_resources))
+        self.class_resources = getattr(test_class, 'resources', [])
 
-        # Add function resources
-        for func in test_funcs:
-            for resource in getattr(func, 'resources', []):
-                self.resources.add(resource)
+    def get_test_class_instance(self):
+        """Gets an instance of the test_class, creating one if necessary."""
+        if not self._test_class_inst:
+            self._test_class_inst = self.test_class()
+            setattr(self._test_class_inst, 'configuration', self.test_config)
+            setattr(self._test_class_inst, 'environment', self.test_env)
+        return self._test_class_inst

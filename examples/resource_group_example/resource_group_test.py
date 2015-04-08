@@ -1,6 +1,7 @@
 from egat.shared_resource import SharedResource
 from egat.testset import UnorderedTestSet
 from egat.testset import SequentialTestSet
+import time
 
 # This example displays the capabilities of SharedResource decorators. By 
 # decorating test classes and functions with their required resources the programmer
@@ -30,6 +31,7 @@ class PermissionsTests(UnorderedTestSet):
     # this.
     @AdminUserResource.decorator
     def testAdminCanCreateUsers(self):
+        time.sleep(2)
         assert(True)
 
     # This method also uses the Administrator User. Since it is also decorated with 
@@ -37,6 +39,7 @@ class PermissionsTests(UnorderedTestSet):
     # time as any other tests with the AdminUserResource.
     @AdminUserResource.decorator
     def testAdminCanDeleteUsers(self):
+        time.sleep(2)
         assert(True)
 
 # This class tests the process of creating some object Foo.
@@ -58,4 +61,5 @@ class TestFooCreation(SequentialTestSet):
     # time as the other methods with the AdminUserResource decorator.
     @AdminUserResource.decorator
     def testFooAuditLog(self):
+        time.sleep(2)
         assert(True)

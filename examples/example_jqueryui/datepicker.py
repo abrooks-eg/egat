@@ -1,12 +1,14 @@
 __author__ = 'Brenda'
 
 from egat.testset import SequentialTestSet
+from egat.execution_groups import execution_group
 from webdriver_resource import WebDriverResource
 from selenium import webdriver
 import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
 
+@execution_group("examples.examples_jqueryui.datepicker")
 class Test3(SequentialTestSet):
     def testStep1(self):
         # We can access the configuration parameters from inside any test function.

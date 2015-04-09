@@ -6,7 +6,7 @@ from egat.testset import UnorderedTestSet
 # that start with the prefix 'test' and it runs them in the order they are defined.
 #
 # You can run this example from the root directory of this project by running:
-#   python test_runner.py examples.simple_example.simpletest.SimpleSequentialTests
+#   ./egatest examples.simple_example.simpletest.SimpleSequentialTests
 class SimpleSequentialTests(SequentialTestSet):
 
     # This is a simple test method. The TestRunner knows it is a test method because
@@ -33,7 +33,7 @@ class SimpleSequentialTests(SequentialTestSet):
 # independent of each other like unit tests. 
 #
 # You can run this class with the command:
-#   python test_runner.py examples.simple_example.simpletest.SimpleUnorderedTests
+#   ./egatest examples.simple_example.simpletest.SimpleUnorderedTests
 class SimpleUnorderedTests(UnorderedTestSet):
     def test1(self):
         assert(True)

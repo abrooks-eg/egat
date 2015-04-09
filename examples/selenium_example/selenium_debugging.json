@@ -1,3 +1,6 @@
 {
+  "options": {
+    "-l": "."
+  },
   "tests": ["examples.selenium_example.selenium_debugging.TestSeleniumDebugging"]
 }

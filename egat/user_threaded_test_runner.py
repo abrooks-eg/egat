@@ -45,4 +45,4 @@ class UserThreadedTestRunner():
 
         for worker in workers:
             worker.join()
-        self.logger.finishedTests()
+        return self.logger.finishedTests()

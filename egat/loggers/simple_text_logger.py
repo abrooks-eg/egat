@@ -6,6 +6,7 @@ from egat.loggers.test_logger import LogLevel
 from Queue import Queue
 from Queue import Empty
 from threading import Thread
+from multiprocessing import Lock
 
 class _Printer(Thread):
     """A class used by the SimpleTextLogger to print test output. The _Printer reads
@@ -39,6 +40,8 @@ class SimpleTextLogger(TestLogger):
     skipped_msg = "Skipped"
     output_queue = None
     current_tests = None
+    failed_test_count = None
+    lock = None
 
     def startingTests(self):
         if self.log_dir:
@@ -52,7 +55,9 @@ class SimpleTextLogger(TestLogger):
         else:
             self.out = sys.stdout
 
+        self.failed_test_count = 0
         self.current_tests = {}
+        self.lock = Lock()
 
         # Set up the printer
         self.output_queue = Queue()
@@ -62,7 +67,7 @@ class SimpleTextLogger(TestLogger):
     def finishedTests(self):
         self.printer.tests_running = False
         self.printer.join()
-        pass
+        return self.failed_test_count
 
     def runningTestFunction(self, instance, func, thread_num=None):
         current_test = {
@@ -70,10 +75,12 @@ class SimpleTextLogger(TestLogger):
             'exception': None,
             'traceback': None,
         }
-        self.current_tests[(instance, func, thread_num)] = current_test
+        with self.lock:
+            self.current_tests[(instance, func, thread_num)] = current_test
 
     def finishedTestFunction(self, instance, func, thread_num=None, browser=None):
-        current_test = self.current_tests.pop((instance, func, thread_num))
+        with self.lock:
+            current_test = self.current_tests.pop((instance, func, thread_num))
         func_str = SimpleTextLogger.format_function_name(instance, func)
         msg = ""
         if current_test['func_failed']:
@@ -93,7 +100,9 @@ class SimpleTextLogger(TestLogger):
         self.output_queue.put((func_str, self.skipped_msg, None))
 
     def foundException(self, instance, func, e, tb, thread_num=None, browser=None):
-        current_test = self.current_tests[(instance, func, thread_num)]
+        with self.lock:
+            self.failed_test_count += 1
+            current_test = self.current_tests[(instance, func, thread_num)]
 
         current_test['func_failed'] = True
         current_test['exception'] = e

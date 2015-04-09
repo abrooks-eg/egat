@@ -39,7 +39,8 @@ class TestLogger():
 
     def finishedTestFunction(self, class_instance, func, thread_num=None, browser=None):
         """Called by the test runner. Indicates that the given test function from 
-        the given class is finished running."""
+        the given class is finished running. This function should return an integer
+        equal to the number of failed tests."""
         pass
 
     def skippingTestFunction(self, class_instance, func, thread_num=None):

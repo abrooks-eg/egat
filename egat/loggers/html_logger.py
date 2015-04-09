@@ -13,6 +13,7 @@ from itertools import groupby
 from Queue import Queue
 from Queue import Empty
 from pkg_resources import Requirement, resource_filename, DistributionNotFound
+from multiprocessing import Lock
 
 class TestResultType():
     SUCCESS = "success"
@@ -288,6 +289,8 @@ class HTMLLogger(TestLogger):
     end_time = None
     test_title = None
     css_path = None
+    failed_test_count = None
+    lock = None
 
     def __init__(self, log_dir=None, log_level=LogLevel.ERROR, css_path=None):
         if log_dir: 
@@ -297,6 +300,8 @@ class HTMLLogger(TestLogger):
 
         TestLogger.__init__(self, log_dir=log_dir, log_level=log_level)
         self.css_path = css_path
+        self.failed_test_count = 0
+        self.lock = Lock()
 
     def startingTests(self):
         if not self.log_dir: self.log_dir = "."
@@ -327,28 +332,35 @@ class HTMLLogger(TestLogger):
             css_path=self.css_path
         )
 
+        return self.failed_test_count
+
     def runningTestFunction(self, instance, func, thread_num=None):
         result = TestResult(instance, func, thread=thread_num)
         result.start_time = datetime.datetime.now()
-        self.current_tests[(instance, func, thread_num)] = result
+        with self.lock:
+            self.current_tests[(instance, func, thread_num)] = result
 
     def finishedTestFunction(self, instance, func, thread_num=None, browser=None):
-        result = self.current_tests.pop((instance, func, thread_num))
-        result.end_time = datetime.datetime.now()
-        if not result.status: result.status = TestResultType.SUCCESS
-        self.results.put(result)
+        with self.lock:
+            result = self.current_tests.pop((instance, func, thread_num))
+            result.end_time = datetime.datetime.now()
+            if not result.status: result.status = TestResultType.SUCCESS
+            self.results.put(result)
 
         if self.log_level == LogLevel.DEBUG:
             self.log_debug_info(browser, instance, func)
 
     def skippingTestFunction(self, instance, func, thread_num=None):
-        result = TestResult(instance, func, status=TestResultType.SKIPPED, thread=thread_num)
-        result.start_time = datetime.datetime.now()
-        result.end_time = datetime.datetime.now()
-        self.results.put(result)
+        with self.lock:
+            result = TestResult(instance, func, status=TestResultType.SKIPPED, thread=thread_num)
+            result.start_time = datetime.datetime.now()
+            result.end_time = datetime.datetime.now()
+            self.results.put(result)
 
     def foundException(self, instance, func, e, tb, thread_num=None, browser=None):
-        result = self.current_tests[(instance, func, thread_num)]
+        with self.lock:
+            self.failed_test_count += 1
+            result = self.current_tests[(instance, func, thread_num)]
         result.status = TestResultType.FAILURE
         result.error = e
         result.traceback = tb

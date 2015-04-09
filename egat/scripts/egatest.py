@@ -4,6 +4,7 @@ from egat.loggers.html_logger import HTMLLogger
 from egat.auto_threaded_test_runner import AutoThreadedTestRunner
 from egat.user_threaded_test_runner import UserThreadedTestRunner
 from egat.parse import ArgumentParser
+import sys
 
 def run():
     """The command-line interface for the TestRunner class."""
@@ -36,4 +37,6 @@ def run():
     runner.add_tests(test_json) 
 
     # Run the tests
-    runner.run_tests()
+    exit_code = runner.run_tests()
+
+    sys.exit(exit_code)

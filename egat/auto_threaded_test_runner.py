@@ -39,7 +39,7 @@ class AutoThreadedTestRunner():
 
         for worker in workers:
             worker.join()
-        self.logger.finishedTests()
+        return self.logger.finishedTests()
 
     @staticmethod
     def _build_tests(test_obj, parent_configuration={}, parent_environment={}):

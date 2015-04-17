@@ -49,7 +49,7 @@ class WorkProvider():
 
 
 class WorkerThread(Thread):
-    """This class draws work from the WorkProviderand executes it."""
+    """This class draws work from the WorkProvider and executes it."""
     work_provider = None
     logger = None
     cur_node = None

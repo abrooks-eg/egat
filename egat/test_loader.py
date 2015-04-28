@@ -123,7 +123,7 @@ class TestLoader():
 
         test_class = TestLoader.get_class_from_name(class_name)
         func = getattr(test_class, function_name)
-        return WorkNode(test_class, [func], config, env)
+        return [WorkNode(test_class, [func], config, env)]
 
     @staticmethod
     def get_class_names_from_module(module_name):

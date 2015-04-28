@@ -14,7 +14,6 @@ from distutils.core import setup
 setup(
     name = 'egat',
     packages = ['egat', 'egat.loggers', 'egat.scripts'], # this must be the same as the name above
-    #data_files = [('', ['egat/loggers/default.css', 'egat/loggers/egat-header.png'])],
     include_package_data=True,
     package_data = {
         'data': ['default.css', 'egat-header.png']
@@ -22,7 +21,7 @@ setup(
     entry_points = {
         'console_scripts': ['egatest = egat.scripts.egatest:run']
     },
-    version = '0.9.16',
+    version = '0.9.17',
     description = 'An automated testing toolkit',
     author = 'E-gineering LLC',
     author_email = 'eg.pypi@e-gineering.com', # contact email

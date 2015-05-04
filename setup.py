@@ -21,7 +21,7 @@ setup(
     entry_points = {
         'console_scripts': ['egatest = egat.scripts.egatest:run']
     },
-    version = '0.9.17',
+    version = '0.9.22',
     description = 'An automated testing toolkit',
     author = 'E-gineering LLC',
     author_email = 'eg.pypi@e-gineering.com', # contact email

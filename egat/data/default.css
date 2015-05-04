@@ -1,4 +1,4 @@
-/* BEGIN: Styles from head section of results.html */
+@charset "utf-8";
 
 body {
     font-family: "Verdana";
@@ -266,8 +266,3 @@ table.results-table {
 .totals-table td:nth-child(4) {
     border-right: 5px white solid;
 }
-
-/* END: Style tweaks added for V1 of app (CAF) */
-
-
-

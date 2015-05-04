@@ -47,10 +47,10 @@ class SimpleTextLogger(TestLogger):
         if self.log_dir:
             # Set up the log file
             start_time = datetime.datetime.now().strftime("%m-%d-%y %H.%M.%S")
-            self.log_dir = self.log_dir.rstrip('/')
-            self.log_dir += "/Test Run %s" % start_time
+            self.log_dir = self.log_dir.rstrip(os.sep)
+            self.log_dir += "%sTest Run %s" % (os.sep, start_time)
             os.mkdir(self.log_dir)
-            log_name = "%s/log.txt" % self.log_dir
+            log_name = "%s%slog.txt" % (self.log_dir, os.sep)
             self.out = open(log_name, 'w')
         else:
             self.out = sys.stdout

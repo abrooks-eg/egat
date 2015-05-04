@@ -32,7 +32,7 @@ class HTMLWriter():
         shutil.copyfile(css_path, log_dir + "/style.css")
         shutil.copyfile(header_path, log_dir + "/egat_header.png")
 
-        return log_dir + "/style.css"
+        return log_dir + os.sep + "style.css"
 
     @staticmethod
     def write_test_results(test_results, start_time, end_time, fp, css_path):
@@ -43,8 +43,10 @@ class HTMLWriter():
         title = "Test Run %s" % start_time.strftime("%m-%d-%y %H:%I %p")
 
         html = """
-            <html>
+            <!DOCTYPE html>
+            <html lang="en">
                 <head>
+                    <meta charset="utf-8"/>
                     <title>%s</title>
                     %s
                     <script type="text/javascript">
@@ -308,11 +310,11 @@ class HTMLLogger(TestLogger):
 
         # Set up the log file
         self.start_time = datetime.datetime.now()
-        self.log_dir = self.log_dir.rstrip('/')
+        self.log_dir = self.log_dir.rstrip(os.sep)
         self.test_title = "Test Run %s" % self.start_time.strftime("%m-%d-%y %H:%M:%S")
-        self.log_dir += "/%s" % self.test_title.replace(':', '.')
+        self.log_dir += "%s%s" % (os.sep, self.test_title.replace(':', '.'))
         os.mkdir(self.log_dir)
-        log_name = "%s/results.html" % self.log_dir
+        log_name = "%s%sresults.html" % (self.log_dir, os.sep)
         self.out = open(log_name, 'w')
 
         self.results = Queue()
@@ -329,7 +331,7 @@ class HTMLLogger(TestLogger):
             self.start_time, 
             self.end_time, 
             self.out, 
-            css_path=self.css_path
+            css_path="style.css" # <-- this is hardcoded to work around a bug in Firefox on Windows where CSS loaded from the filesystem must use a relative path.
         )
 
         return self.failed_test_count

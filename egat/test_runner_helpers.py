@@ -35,7 +35,10 @@ class WorkProvider():
     def add_failed_ex_groups(self, failed_ex_groups, environment):
         """Takes a list of Execution Groups and adds them to this WorkProvider's list
         of failed Execution Groups. Should be called if any of this WorkProvider's tests 
-        with execution groups fail."""
+        with execution groups fail.
+        
+        The environment dictionary is not used. It is still required so that 
+        subclasses like the AuthoThreadedWorkProvider can make use of it."""
         self._failed_ex_groups = self._failed_ex_groups.union(failed_ex_groups)
 
     def has_failed_ex_groups(self, environment, *execution_groups):

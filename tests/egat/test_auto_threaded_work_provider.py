@@ -1,6 +1,5 @@
 import unittest
 from egat.auto_threaded_test_runner import AutoThreadedWorkProvider
-from collections import deque
 
 class MockWorkNode():
     resources = []
@@ -13,13 +12,13 @@ class TestGetNextNode(unittest.TestCase):
     def test_no_resources(self):
         wp = AutoThreadedWorkProvider()
         node = MockWorkNode()
-        wp._work_nodes = deque([node])
+        wp._work_nodes = [node]
         self.assertEqual(node, wp.get_next_node())
 
     def test_single_resource(self):
         wp = AutoThreadedWorkProvider()
         node = MockWorkNode()
-        wp._work_nodes = deque([node])
+        wp._work_nodes = [node]
         node.resources = [1]
         self.assertEqual(node, wp.get_next_node())
 
@@ -29,7 +28,7 @@ class TestGetNextNode(unittest.TestCase):
     def multiple_resources(self):
         wp = AutoThreadedWorkProvider()
         node = MockWorkNode()
-        wp._work_nodes = deque([node])
+        wp._work_nodes = [node]
         node.resources = [1, 2, 3, 4]
         wp._cur_resources = [2, 3]
         self.assertIsNone(wp.get_next_node())

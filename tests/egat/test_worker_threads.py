@@ -30,40 +30,44 @@ class MockWorkPool():
 class TestWorkerThread(unittest.TestCase):
     def test_has_failed_ex_groups(self):
         wp = WorkProvider()
-        wp.failed_ex_groups = set()
+        env = { 'env': 'env' }
 
+        # Same class, no failed ex groups
         self.assertFalse(
-            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth1, wp)
+            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth1, env, wp)
         )
         self.assertFalse(
-            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth2, wp)
+            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth2, env, wp)
         )
 
-        wp.failed_ex_groups.add(1)
+        # Same class, with failed class ex groups
+        wp.add_failed_ex_groups([1], env)
 
         self.assertTrue(
-            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth1, wp)
+            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth1, env, wp)
         )
         self.assertTrue(
-            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth2, wp)
+            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth2, env, wp)
         )
 
-        wp.failed_ex_groups = set()
+        # Same class, no ex groups, with wp.failed_ex_groups reset
+        wp = WorkProvider()
 
         self.assertFalse(
-            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth1, wp)
+            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth1, env, wp)
         )
         self.assertFalse(
-            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth2, wp)
+            WorkerThread.has_failed_ex_groups(Fixture1, Fixture1.meth2, env, wp)
         )
 
-        wp.failed_ex_groups.add(2)
+        # Same class, with one method having a failed ex_group
+        wp.add_failed_ex_groups([2], env)
 
         self.assertTrue(
-            WorkerThread.has_failed_ex_groups(Fixture2, Fixture2.meth1, wp)
+            WorkerThread.has_failed_ex_groups(Fixture2, Fixture2.meth1, env, wp)
         )
         self.assertFalse(
-            WorkerThread.has_failed_ex_groups(Fixture2, Fixture2.meth2, wp)
+            WorkerThread.has_failed_ex_groups(Fixture2, Fixture2.meth2, env, wp)
         )
 
     def test_get_ex_groups(self):

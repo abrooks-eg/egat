@@ -50,6 +50,10 @@ class WorkProvider():
         return False
 
 
+class TestFunctionType():
+    TEST = 0
+    SETUP = 1
+    TEARDOWN = 2
 
 class WorkerThread(Thread):
     """This class draws work from the WorkProvider and executes it."""
@@ -78,6 +82,7 @@ class WorkerThread(Thread):
         """Takes a WorkNode and runs the tests it contains."""
         classname = node.test_class.__name__
         instance = node.get_test_class_instance()
+        cls = node.test_class
 
         # if this node contains only one function, check for failed execution groups
         # and don't instatiate the class or call setup
@@ -88,35 +93,44 @@ class WorkerThread(Thread):
                 return
                 
         # Try to call the class's setup method
-        if hasattr(instance, 'setup') and callable(instance.setup):
-            instance.setup()
+        if hasattr(cls, 'setup') and callable(cls.setup):
+            self.run_and_report(node, cls.setup, TestFunctionType.SETUP)
 
         # Run all the test functions
         for func in node.test_funcs:
-            # Check for failed execution groups
-            if WorkerThread.has_failed_ex_groups(node.test_class, func, node.test_env, self.work_provider):
-                self.logger.skippingTestFunction(instance, func, thread_num=self.thread_num)
-                continue
-
-            self.logger.runningTestFunction(instance, func, thread_num=self.thread_num)
-            try: 
-                func(instance)
-            except:
-                e = sys.exc_info()[0]
-                tb = traceback.format_exc()
-                self.work_provider.add_failed_ex_groups(
-                    WorkerThread.get_ex_groups(node.test_class, func),
-                    node.test_env
-                )
-
-
-                self.logger.foundException(instance, func, e, tb, thread_num=self.thread_num)
-
-            self.logger.finishedTestFunction(instance, func, thread_num=self.thread_num)
+            self.run_and_report(node, func)
 
         # Try to call the class's teardown method
-        if hasattr(instance, 'teardown') and callable(instance.teardown):
-            instance.teardown()
+        if hasattr(cls, 'teardown') and callable(cls.teardown):
+            self.run_and_report(node, cls.teardown, TestFunctionType.TEARDOWN)
+
+    def run_and_report(self, node, func, func_type=TestFunctionType.TEST):
+        """
+            Takes a node and a test function on that node and runs the test function,
+            reporting appropriately to the test logger. Can also handle setup and
+            teardown methods when a TestFunctionType is specified.
+        """
+        instance = node.get_test_class_instance()
+
+        # Check for failed execution groups
+        if WorkerThread.has_failed_ex_groups(node.test_class, func, node.test_env, self.work_provider):
+            self.logger.skippingTestFunction(instance, func, func_type, thread_num=self.thread_num)
+            return
+
+        self.logger.runningTestFunction(instance, func, func_type, thread_num=self.thread_num)
+        try:
+            func(instance)
+        except:
+            e = sys.exc_info()[0]
+            tb = traceback.format_exc()
+            self.work_provider.add_failed_ex_groups(
+                WorkerThread.get_ex_groups(node.test_class, func),
+                node.test_env
+            )
+
+            self.logger.foundException(instance, func, e, tb, func_type, thread_num=self.thread_num)
+
+        self.logger.finishedTestFunction(instance, func, func_type, thread_num=self.thread_num)
 
     @staticmethod
     def has_failed_ex_groups(test_class, func, env, work_provider):

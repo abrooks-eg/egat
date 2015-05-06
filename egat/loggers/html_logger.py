@@ -9,6 +9,7 @@ import shutil
 from egat.loggers.test_logger import TestLogger
 from egat.loggers.test_logger import LogLevel
 from egat.test_result import TestResult
+from egat.test_runner_helpers import TestFunctionType
 from itertools import groupby
 from Queue import Queue
 from Queue import Empty
@@ -336,39 +337,45 @@ class HTMLLogger(TestLogger):
 
         return self.failed_test_count
 
-    def runningTestFunction(self, instance, func, thread_num=None):
-        result = TestResult(instance, func, thread=thread_num)
+    def runningTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
+        result = TestResult(class_instance, func, thread=thread_num)
         result.start_time = datetime.datetime.now()
         with self.lock:
-            self.current_tests[(instance, func, thread_num)] = result
+            self.current_tests[(class_instance, func, thread_num)] = result
 
-    def finishedTestFunction(self, instance, func, thread_num=None, browser=None):
+    def finishedTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, browser=None,
+                             thread_num=None):
         with self.lock:
-            result = self.current_tests.pop((instance, func, thread_num))
-            result.end_time = datetime.datetime.now()
-            if not result.status: result.status = TestResultType.SUCCESS
-            self.results.put(result)
+            result = self.current_tests.pop((class_instance, func, thread_num))
+            # Don't log results for setup and teardown unless they fail
+            if func_type == TestFunctionType.TEST or result.status == TestResultType.FAILURE:
+                result.end_time = datetime.datetime.now()
+                if not result.status: result.status = TestResultType.SUCCESS
+                self.results.put(result)
 
         if self.log_level == LogLevel.DEBUG:
-            self.log_debug_info(browser, instance, func)
+            self.log_debug_info(browser, class_instance, func)
 
-    def skippingTestFunction(self, instance, func, thread_num=None):
-        with self.lock:
-            result = TestResult(instance, func, status=TestResultType.SKIPPED, thread=thread_num)
-            result.start_time = datetime.datetime.now()
-            result.end_time = datetime.datetime.now()
-            self.results.put(result)
+    def skippingTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
+        # Don't log results for setup and teardown unless they fail
+        if func_type == TestFunctionType.TEST:
+            with self.lock:
+                result = TestResult(class_instance, func, status=TestResultType.SKIPPED, thread=thread_num)
+                result.start_time = datetime.datetime.now()
+                result.end_time = datetime.datetime.now()
+                self.results.put(result)
 
-    def foundException(self, instance, func, e, tb, thread_num=None, browser=None):
+    def foundException(self, class_instance, func, e, tb, func_type=TestFunctionType.TEST, browser=None,
+                       thread_num=None):
         with self.lock:
             self.failed_test_count += 1
-            result = self.current_tests[(instance, func, thread_num)]
+            result = self.current_tests[(class_instance, func, thread_num)]
         result.status = TestResultType.FAILURE
         result.error = e
         result.traceback = tb
 
         if self.log_level == LogLevel.ERROR:
-            self.log_debug_info(browser, instance, func)
+            self.log_debug_info(browser, class_instance, func)
             
     @staticmethod
     def format_function_name(instance, func):
@@ -384,7 +391,11 @@ class HTMLLogger(TestLogger):
         if browser:
             func_str = HTMLLogger.format_function_name(instance, func)
             path = self.log_dir if self.log_dir else "."
-            browser.save_screenshot('%s/%s.png' % (path, func_str))
-            with open('%s/%s.html' % (path, func_str), 'w') as f:
-                f.write(browser.page_source.encode('utf8'))
+            try:
+                browser.save_screenshot('%s/%s.png' % (path, func_str))
+                with open('%s/%s.html' % (path, func_str), 'w') as f:
+                    f.write(browser.page_source.encode('utf8'))
+            except:
+                print("error taking debugging screenshot for %s" % func_str)
+
 

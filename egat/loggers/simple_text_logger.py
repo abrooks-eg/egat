@@ -3,6 +3,7 @@ import datetime
 import os
 from egat.loggers.test_logger import TestLogger
 from egat.loggers.test_logger import LogLevel
+from egat.test_runner_helpers import TestFunctionType
 from Queue import Queue
 from Queue import Empty
 from threading import Thread
@@ -69,46 +70,52 @@ class SimpleTextLogger(TestLogger):
         self.printer.join()
         return self.failed_test_count
 
-    def runningTestFunction(self, instance, func, thread_num=None):
+    def runningTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
         current_test = {
             'func_failed': False,
             'exception': None,
             'traceback': None,
         }
         with self.lock:
-            self.current_tests[(instance, func, thread_num)] = current_test
+            self.current_tests[(class_instance, func, thread_num)] = current_test
 
-    def finishedTestFunction(self, instance, func, thread_num=None, browser=None):
+    def finishedTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, browser=None,
+                             thread_num=None):
         with self.lock:
-            current_test = self.current_tests.pop((instance, func, thread_num))
-        func_str = SimpleTextLogger.format_function_name(instance, func)
-        msg = ""
-        if current_test['func_failed']:
-            msg = self.failure_msg
-        else:
-            msg = self.success_msg
+            current_test = self.current_tests.pop((class_instance, func, thread_num))
 
-        self.output_queue.put(
-            (func_str, msg, current_test['traceback'])
-        )
+        # Only print output if this was a test function, or if the function failed
+        if func_type == TestFunctionType.TEST or current_test['func_failed']:
+            func_str = SimpleTextLogger.format_function_name(class_instance, func)
+            if current_test['func_failed']:
+                msg = self.failure_msg
+            else:
+                msg = self.success_msg
+
+            self.output_queue.put(
+                (func_str, msg, current_test['traceback'])
+            )
 
         if self.log_level == LogLevel.DEBUG:
-            self.log_debug_info(browser, instance, func)
+            self.log_debug_info(browser, class_instance, func)
 
-    def skippingTestFunction(self, instance, func, thread_num=None):
-        func_str = SimpleTextLogger.format_function_name(instance, func)
-        self.output_queue.put((func_str, self.skipped_msg, None))
+    def skippingTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
+        func_str = SimpleTextLogger.format_function_name(class_instance, func)
+        # Only print output if this was a test function
+        if func_type == TestFunctionType.TEST:
+            self.output_queue.put((func_str, self.skipped_msg, None))
 
-    def foundException(self, instance, func, e, tb, thread_num=None, browser=None):
+    def foundException(self, class_instance, func, e, tb, func_type=TestFunctionType.TEST, browser=None,
+                       thread_num=None):
         with self.lock:
             self.failed_test_count += 1
-            current_test = self.current_tests[(instance, func, thread_num)]
+            current_test = self.current_tests[(class_instance, func, thread_num)]
 
         current_test['func_failed'] = True
         current_test['exception'] = e
         current_test['traceback'] = tb
         if self.log_level == LogLevel.ERROR:
-            self.log_debug_info(browser, instance, func)
+            self.log_debug_info(browser, class_instance, func)
 
     @staticmethod
     def format_function_name(instance, func):
@@ -124,7 +131,10 @@ class SimpleTextLogger(TestLogger):
         if browser:
             func_str = SimpleTextLogger.format_function_name(instance, func)
             path = self.log_dir if self.log_dir else "."
-            browser.save_screenshot('%s/%s.png' % (path, func_str))
-            with open('%s/%s.html' % (path, func_str), 'a') as f:
-                f.write(browser.page_source.encode('utf8'))
+            try:
+                browser.save_screenshot('%s/%s.png' % (path, func_str))
+                with open('%s/%s.html' % (path, func_str), 'a') as f:
+                    f.write(browser.page_source.encode('utf8'))
+            except:
+                print("error taking debugging screenshot for %s" % func_str)
 

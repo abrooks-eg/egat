@@ -1,4 +1,4 @@
-import sys
+from egat.test_runner_helpers import TestFunctionType
 
 class LogLevel():
     DEBUG = 4
@@ -32,24 +32,26 @@ class TestLogger():
         """Called by the test runner. Indicates that all tests are finished."""
         pass
 
-    def runningTestFunction(self, class_instance, func, thread_num=None):
+    def runningTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class is about to be run."""
         pass
 
-    def finishedTestFunction(self, class_instance, func, thread_num=None, browser=None):
+    def finishedTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, browser=None,
+                             thread_num=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class is finished running. This function should return an integer
         equal to the number of failed tests."""
         pass
 
-    def skippingTestFunction(self, class_instance, func, thread_num=None):
+    def skippingTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
         """Called by the test runner. Indicates that the given test function from
         the given class has been skipped. This method is called instead of 
         runningTestFunction()."""
         pass
 
-    def foundException(self, class_instance, func, e, tb, thread_num=None, browser=None):
+    def foundException(self, class_instance, func, e, tb, func_type=TestFunctionType.TEST, browser=None,
+                       thread_num=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class has encountered an exception. The exception object and stack 
         trace (string) are also provided. An optional 'browser' argument may be 

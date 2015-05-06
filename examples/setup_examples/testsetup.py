@@ -33,7 +33,6 @@ class TestSetupAndTeardown1(SequentialTestSet):
 # will see the browser launch before each test and quit after each test.
 class TestSetupAndTeardown2(UnorderedTestSet):
     def setup(self):
-        assert(False)
         self.browser = webdriver.Firefox()
 
     def testDuck(self):

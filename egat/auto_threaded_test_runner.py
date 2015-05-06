@@ -1,6 +1,5 @@
 from egat.test_loader import TestLoader
-from egat.test_runner_helpers import WorkProvider
-from egat.test_runner_helpers import WorkerThread
+from egat.test_runner_helpers import WorkProvider, WorkerThread, TestFunctionType
 from threading import Lock
 from egat.testset import ExecutionOrder
 import sys
@@ -203,82 +202,89 @@ class AutoThreadedWorkerThread(WorkerThread):
             self.work_provider.add_nodes(node)
             return
 
-        classname = node.test_class.__name__
+        cls = node.test_class
         instance = node.get_test_class_instance()
 
         # if this node contains only one function, check for failed execution groups
         # and don't instatiate the class or call setup
         if len(node.test_funcs) == 1:
             func = node.test_funcs[0]
-            if WorkerThread.has_failed_ex_groups(node.test_class, func, node.test_env, self.work_provider):
+            if WorkerThread.has_failed_ex_groups(cls, func, node.test_env, self.work_provider):
                 self.logger.skippingTestFunction(instance, func, thread_num=self.thread_num)
                 self.work_provider.release_resources(node.class_resources)
                 return
 
         # Try to call the class's setup method
         if not node.test_class_is_setup:
-            if hasattr(instance, 'setup') and callable(instance.setup):
-                # Lock down setup's resources
-                resources = getattr(instance.setup, 'resources', [])
-                setup_resources_locked = self.work_provider.lock_resources(resources)
-                if setup_resources_locked:
-                    instance.setup()
-                    node.test_class_is_setup = True
-                    self.work_provider.release_resources(resources)
-                else:
-                    self.work_provider.release_resources(node.class_resources)
-                    self.work_provider.add_nodes(node)
+            if hasattr(cls, 'setup') and callable(cls.setup):
+                success = self.acquire_resources_and_run(node, cls.setup, TestFunctionType.SETUP)
+                if not success:
                     return
 
         # Run all the test functions
         for func in list(node.test_funcs): # copy the list so we don't remove items while iterating
-
-            # Check for failed execution groups
-            if WorkerThread.has_failed_ex_groups(node.test_class, func, node.test_env, self.work_provider):
-                self.logger.skippingTestFunction(instance, func, thread_num=self.thread_num)
-                continue
-                
-
-            # Try to lock this function's resources
-            func_resources = getattr(func, 'resources', [])
-            func_resources_locked = self.work_provider.lock_resources(func_resources)
-            if not func_resources_locked:
-                self.work_provider.release_resources(node.class_resources)
-                self.work_provider.add_nodes(node)
+            success = self.acquire_resources_and_run(node, func)
+            if not success:
                 return
 
 
-            # Execute the test function
-            self.logger.runningTestFunction(instance, func, thread_num=self.thread_num)
-            try: 
-                func(instance)
-            except:
-                e = sys.exc_info()[0]
-                tb = traceback.format_exc()
-                self.work_provider.add_failed_ex_groups(
-                    WorkerThread.get_ex_groups(node.test_class, func),
-                    node.test_env
-                )
-                self.logger.foundException(instance, func, e, tb, thread_num=self.thread_num)
-
-            # Cleanup
-            node.test_funcs.remove(func)
-            self.logger.finishedTestFunction(instance, func, thread_num=self.thread_num)
-            self.work_provider.release_resources(func_resources)
-
         # Try to call the class's teardown method
         if not node.test_class_is_torndown:
-            if hasattr(instance, 'teardown') and callable(instance.teardown):
-                # Lock down teardown's resources
-                resources = getattr(instance.teardown, 'resources', [])
-                teardown_resources_locked = self.work_provider.lock_resources(resources)
-                if teardown_resources_locked:
-                    instance.teardown()
-                    node.test_class_is_torndown = True
-                    self.work_provider.release_resources(resources)
-                else:
-                    self.work_provider.release_resources(node.class_resources)
-                    self.work_provider.add_nodes(node)
+            if hasattr(cls, 'teardown') and callable(cls.teardown):
+                success = self.acquire_resources_and_run(node, cls.teardown, TestFunctionType.TEARDOWN)
+                if not success:
                     return
 
         self.work_provider.release_resources(node.class_resources)
+
+    def acquire_resources_and_run(self, node, func, func_type=TestFunctionType.TEST):
+        """
+        Tries to acquire resources for a function and run it, reporting
+        appropriately to the TestLogger. Takes care of returning nodes to the work
+        provider if resources cannot be locked.
+
+        :param node: The WorkNode containing the function you wish to run.
+        :param func: The function you wish to execute
+        :param func_type: The TestFunctionType of the function
+        :return: True if the function was successfully run, False otherwise
+        """
+        instance = node.get_test_class_instance()
+
+        # Check for failed execution groups
+        if WorkerThread.has_failed_ex_groups(node.test_class, func, node.test_env, self.work_provider):
+            self.logger.skippingTestFunction(instance, func, func_type, thread_num=self.thread_num)
+            return True
+
+        # Try to lock this function's resources
+        func_resources = getattr(func, 'resources', [])
+        func_resources_locked = self.work_provider.lock_resources(func_resources)
+        if not func_resources_locked:
+            self.work_provider.release_resources(node.class_resources)
+            self.work_provider.add_nodes(node)
+            return False
+
+        # Execute the function
+        self.logger.runningTestFunction(instance, func, func_type, thread_num=self.thread_num)
+        try:
+            func(instance)
+        except:
+            e = sys.exc_info()[0]
+            tb = traceback.format_exc()
+            self.work_provider.add_failed_ex_groups(
+                WorkerThread.get_ex_groups(node.test_class, func),
+                node.test_env
+            )
+            self.logger.foundException(instance, func, e, tb, func_type, thread_num=self.thread_num)
+
+        # Cleanup
+        if func_type == TestFunctionType.SETUP:
+            node.test_class_is_setup = True
+        elif func_type == TestFunctionType.TEARDOWN:
+            node.test_class_is_torndown = True
+        else:
+            node.test_funcs.remove(func)
+        self.logger.finishedTestFunction(instance, func, func_type, thread_num=self.thread_num)
+        self.work_provider.release_resources(func_resources)
+        return True
+
+

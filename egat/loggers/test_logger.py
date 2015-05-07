@@ -1,8 +1,9 @@
 from egat.test_runner_helpers import TestFunctionType
 
+
 class LogLevel():
     DEBUG = 4
-    INFO  = 1 # Unused, treated the same as ERROR
+    INFO  = 3
     WARN  = 1 # Unused, treated the same as ERROR
     ERROR = 1
 
@@ -37,8 +38,7 @@ class TestLogger():
         the given class is about to be run."""
         pass
 
-    def finishedTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, browser=None,
-                             thread_num=None):
+    def finishedTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class is finished running. This function should return an integer
         equal to the number of failed tests."""
@@ -50,11 +50,37 @@ class TestLogger():
         runningTestFunction()."""
         pass
 
-    def foundException(self, class_instance, func, e, tb, func_type=TestFunctionType.TEST, browser=None,
-                       thread_num=None):
+    def foundException(self, class_instance, func, e, tb, func_type=TestFunctionType.TEST, thread_num=None):
         """Called by the test runner. Indicates that the given test function from 
         the given class has encountered an exception. The exception object and stack 
         trace (string) are also provided. An optional 'browser' argument may be 
         provided. The 'browser' should be a Selenium Webdriver object and may be 
         used by the logger to provide debugging information."""
         pass
+
+    # ------------- Helper Functions --------------
+
+    @staticmethod
+    def format_function_name(instance, func):
+        """Takes a class name and a function from that class and returns a string
+        representing the given function."""
+        return "%s.%s.%s" % (func.__module__, instance.__class__.__name__, func.__name__)
+
+    def log_debug_info(self, instance, func):
+        """Takes a class instance and a function object. If the class has an
+        attribute called 'browser' this method will take a screenshot of the browser
+        window and save the page source to the log_dir."""
+        try:
+            from selenium.webdriver.remote.webdriver import WebDriver
+            browser = getattr(instance, 'browser', None)
+            if browser and isinstance(browser, WebDriver):
+                func_str = TestLogger.format_function_name(instance, func)
+                path = self.log_dir if self.log_dir else "."
+                try:
+                    browser.save_screenshot('%s/%s.png' % (path, func_str))
+                    with open('%s/%s.html' % (path, func_str), 'w') as f:
+                        f.write(browser.page_source.encode('utf8'))
+                except:
+                    print("error taking debugging screenshot for %s" % func_str)
+        except ImportError:
+            pass

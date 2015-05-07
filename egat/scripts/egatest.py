@@ -11,7 +11,6 @@ def run():
     # Parse arguments
     parser = ArgumentParser()
     args = parser.parse_args()
-    tests = args.tests
     test_json = {
         "tests": args.tests,
         "configuration": getattr(args, 'configuration', {}),

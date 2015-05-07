@@ -161,9 +161,9 @@ class ArgumentParser():
       parser.add_argument(
          "--log-level",
          metavar="LOG_LEVEL",
-         choices=["DEBUG", "ERROR"],
+         choices=["DEBUG", "INFO", "ERROR"],
          default="ERROR",
-         help="Sets the log level. Valid values are DEBUG and ERROR. Defaults to ERROR.",
+         help="Sets the log level. Valid values are ERROR, INFO, and DEBUG. Defaults to ERROR.",
       )
 
       parser.add_argument(
@@ -180,8 +180,6 @@ class ArgumentParser():
           help="""An optional css file to be used with the HTMLLogger instead of the
           default one."""
       )
-
-
 
    def parse_args(self):
       """Parses the command-line arguments to this script, and parse the given

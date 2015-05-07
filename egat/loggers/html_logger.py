@@ -343,8 +343,7 @@ class HTMLLogger(TestLogger):
         with self.lock:
             self.current_tests[(class_instance, func, thread_num)] = result
 
-    def finishedTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, browser=None,
-                             thread_num=None):
+    def finishedTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
         with self.lock:
             result = self.current_tests.pop((class_instance, func, thread_num))
             # Don't log results for setup and teardown unless they fail
@@ -353,8 +352,8 @@ class HTMLLogger(TestLogger):
                 if not result.status: result.status = TestResultType.SUCCESS
                 self.results.put(result)
 
-        if self.log_level == LogLevel.DEBUG:
-            self.log_debug_info(browser, class_instance, func)
+        if self.log_level >= LogLevel.DEBUG:
+            self.log_debug_info(class_instance, func)
 
     def skippingTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
         # Don't log results for setup and teardown unless they fail
@@ -365,8 +364,7 @@ class HTMLLogger(TestLogger):
                 result.end_time = datetime.datetime.now()
                 self.results.put(result)
 
-    def foundException(self, class_instance, func, e, tb, func_type=TestFunctionType.TEST, browser=None,
-                       thread_num=None):
+    def foundException(self, class_instance, func, e, tb, func_type=TestFunctionType.TEST, thread_num=None):
         with self.lock:
             self.failed_test_count += 1
             result = self.current_tests[(class_instance, func, thread_num)]
@@ -374,28 +372,5 @@ class HTMLLogger(TestLogger):
         result.error = e
         result.traceback = tb
 
-        if self.log_level == LogLevel.ERROR:
-            self.log_debug_info(browser, class_instance, func)
-            
-    @staticmethod
-    def format_function_name(instance, func):
-        """Takes a class name and a function from that class and returns a string
-        representing the given function."""
-        return "%s.%s.%s" % (func.__module__, instance.__class__.__name__, func.__name__)
-
-    def log_debug_info(self, browser, instance, func):
-        """Takes a class instance and a function object. If the class has an 
-        attribute called 'browser' this method will take a screenshot of the browser 
-        window and save the page source to the log_dir."""
-        browser = getattr(instance, 'browser', None)
-        if browser:
-            func_str = HTMLLogger.format_function_name(instance, func)
-            path = self.log_dir if self.log_dir else "."
-            try:
-                browser.save_screenshot('%s/%s.png' % (path, func_str))
-                with open('%s/%s.html' % (path, func_str), 'w') as f:
-                    f.write(browser.page_source.encode('utf8'))
-            except:
-                print("error taking debugging screenshot for %s" % func_str)
-
-
+        if self.log_level >= LogLevel.INFO:
+            self.log_debug_info(class_instance, func)

@@ -1,7 +1,7 @@
 #####################################################################################
 #
 # To build the package and upload to PyPi
-#    python setup.py sdist upload 
+#    python setup.py sdist upload --sign
 #
 # To build and upload to Test PyPi
 #    python setup.py sdist upload -r https://testpypi.python.org/pypi

@@ -43,6 +43,12 @@ class TestSet():
 
         return test_functions 
 
+    @classmethod
+    def validate(cls, boolean_expression, error_message):
+        """Asserts that the condition passed into 'boolean_expression' is true and raises the
+        error message specified by 'error_message' if it is false."""
+        assert boolean_expression, error_message
+        
 class SequentialTestSet(TestSet):
     """A TestSet whose tests are called in the order they are written (by line 
     number). In addition the setup() and teardown() are called before the first and 

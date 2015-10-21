@@ -44,7 +44,7 @@ class TestSet():
         return test_functions 
 
     @classmethod
-    def validate(cls, boolean_expression, error_message):
+    def validate(cls, boolean_expression, error_message=""):
         """Asserts that the condition passed into 'boolean_expression' is true and raises the
         error message specified by 'error_message' if it is false."""
         assert boolean_expression, error_message

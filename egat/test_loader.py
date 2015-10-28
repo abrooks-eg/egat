@@ -52,20 +52,20 @@ class TestLoader():
         is_class = False
         is_fn = False
         descriptor_len = len(test_name.split('.' ))
-        unrecogized_test_descriptor = ImportError("Test descriptor '%s' is not importable as a module, class, or function." % test_name)
+        unrecogized_test_descriptor = "Test descriptor '%s' or one of its dependencies could not be imported as a module, class, or function => " % test_name
         try: is_module = __import__(test_name)
-        except ImportError:
+        except ImportError as e:
             if descriptor_len > 1:
                 try: is_class = __import__('.'.join(test_name.split('.')[0:-1]))
-                except ImportError:
+                except ImportError as e:
                     if descriptor_len > 2:
                         try: is_fn = __import__('.'.join(test_name.split('.')[0:-2]))
-                        except ImportError:
-                            raise unrecogized_test_descriptor
+                        except ImportError as e:
+                            raise ImportError(unrecogized_test_descriptor + e.message)
                     else:
-                        raise unrecogized_test_descriptor
+                        raise ImportError(unrecogized_test_descriptor + e.message)
             else:
-                raise unrecogized_test_descriptor
+                raise ImportError(unrecogized_test_descriptor + e.message)
 
         if is_module:
             load_func = TestLoader.get_work_nodes_from_module_name

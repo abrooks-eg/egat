@@ -7,23 +7,40 @@ class LogLevel():
     WARN  = 1 # Unused, treated the same as ERROR
     ERROR = 1
 
+#AB - Adding a class to handle screen shot capturing levels
+class LogScreen():
+    ASSERT = 3
+    ERROR  = 2
+    NONE   = 1
+
 
 class TestLogger():
     """An abstract class that defines an interface for a test logger. Intended to 
     be subclassed and have all its methods overridden."""
 
     log_level = None
+    log_screen = None
     log_dir = None
+    log_display = False
 
-    def __init__(self, log_dir=None, log_level=LogLevel.ERROR):
+    def __init__(self, log_dir=None, log_level=LogLevel.ERROR, log_screen=LogScreen.NONE, log_display=False):
         """Takes a directory that the logger will write to and optionally a 
         LogLevel."""
         self.log_dir = log_dir
         self.log_level = log_level
+        self.log_screen = log_screen
+        self.log_display = log_display
 
     def set_log_level(self, log_level):
         """Sets the log level. Valid levels are defined in the LogLevel class."""
         self.log_level = log_level
+        
+    def set_log_scren(self, log_screen):
+        """Sets the log level. Valid levels are defined in the LogLevel class."""
+        self.log_screen = log_screen
+
+    def set_log_display(self, log_display):
+        self.log_display = log_display
 
     def startingTests(self):
         """Called by the test runner. Indicates that tests are starting."""
@@ -68,19 +85,35 @@ class TestLogger():
 
     def log_debug_info(self, instance, func):
         """Takes a class instance and a function object. If the class has an
-        attribute called 'browser' this method will take a screenshot of the browser
+        attribute called 'driver' this method will take a screenshot of the browser
         window and save the page source to the log_dir."""
         try:
             from selenium.webdriver.remote.webdriver import WebDriver
-            browser = getattr(instance, 'browser', None)
+            #AB - change to reflect difference in front end PageModel design
+            #browser = getattr(instance, 'browser', None)
+            browser = None
+            ss_file = None
+            if hasattr(instance, 'page'):
+                browser = getattr(instance.page, 'driver', None)
+            
             if browser and isinstance(browser, WebDriver):
                 func_str = TestLogger.format_function_name(instance, func)
                 path = self.log_dir if self.log_dir else "."
+                
+                #Find a unique file name
+                import os.path
+                ss = 1
+                while(os.path.isfile('%s/%s.%s.png' % (path, func_str, ss))):
+                    ss += 1
+                
                 try:
-                    browser.save_screenshot('%s/%s.png' % (path, func_str))
-                    with open('%s/%s.html' % (path, func_str), 'w') as f:
+                    browser.save_screenshot('%s/%s.%s.png' % (path, func_str, ss))
+                    ss_file = '%s.%s.png' % (func_str, ss)
+                    with open('%s/%s.%s.html' % (path, func_str, ss), 'w') as f:
                         f.write(browser.page_source.encode('utf8'))
                 except:
                     print("error taking debugging screenshot for %s" % func_str)
+                
+            return ss_file 
         except ImportError:
-            pass
+            return None

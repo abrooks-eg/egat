@@ -2,7 +2,7 @@ import sys
 import datetime
 import os
 from egat.loggers.test_logger import TestLogger
-from egat.loggers.test_logger import LogLevel
+#from egat.loggers.test_logger import LogLevel
 from egat.test_runner_helpers import TestFunctionType
 from Queue import Queue
 from Queue import Empty
@@ -95,8 +95,9 @@ class SimpleTextLogger(TestLogger):
                 (func_str, msg, current_test['traceback'])
             )
 
-        if self.log_level >= LogLevel.DEBUG:
-            self.log_debug_info(class_instance, func)
+        #AB - removing logLevel
+        #if self.log_level >= LogLevel.DEBUG:
+        ss_loc = self.log_debug_info(class_instance, func)
 
     def skippingTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
         func_str = TestLogger.format_function_name(class_instance, func)
@@ -112,8 +113,9 @@ class SimpleTextLogger(TestLogger):
         current_test['func_failed'] = True
         current_test['exception'] = e
         current_test['traceback'] = tb
-        if self.log_level >= LogLevel.INFO:
-            self.log_debug_info(class_instance, func)
+        #AB - removing logLevel
+        #if self.log_level >= LogLevel.INFO:
+        ss_loc = self.log_debug_info(class_instance, func)
 
 
 

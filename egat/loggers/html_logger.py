@@ -8,6 +8,7 @@ import inspect
 import shutil
 from egat.loggers.test_logger import TestLogger
 from egat.loggers.test_logger import LogLevel
+from egat.loggers.test_logger import LogScreen
 from egat.test_result import TestResult
 from egat.test_runner_helpers import TestFunctionType
 from itertools import groupby
@@ -15,6 +16,7 @@ from Queue import Queue
 from Queue import Empty
 from pkg_resources import Requirement, resource_filename, DistributionNotFound
 from multiprocessing import Lock
+from collections import OrderedDict
 
 class TestResultType():
     SUCCESS = "success"
@@ -43,6 +45,7 @@ class HTMLWriter():
         css_str = '<link rel="stylesheet" href="%s" type="text/css">' % css_path
         title = "Test Run %s" % start_time.strftime("%m-%d-%y %H:%I %p")
 
+        #AB - added expand trace link and corresponding function
         html = """
             <!DOCTYPE html>
             <html lang="en">
@@ -55,18 +58,53 @@ class HTMLWriter():
                             // check to see if we are already showing the traceback
                             var testResultRow = document.querySelector("tr[id='" + id + "-result']")
                             var detailsRow = document.querySelector("tr[id='" + id + "-details']")
+                            var traceRow = document.querySelector("tr[id='" + id + "-trace']")
                             var hiddenDetailsDiv = document.querySelector("div[id='" + id + "-hidden-details']")
+                            var hiddenSSDiv = document.querySelector("div[id='" + id + "-hidden-ss']")
+                            var hiddenTraceDiv = document.querySelector("div[id='" + id + "-hidden-trace']")
 
                             if (detailsRow === null) {
                                 // the details are hidden; show it.
                                 var details = hiddenDetailsDiv.innerHTML
+                                var ss = hiddenSSDiv.innerHTML
                                 detailsRow = document.createElement('tr')
                                 detailsRow.setAttribute('id', id + "-details")
-                                detailsRow.innerHTML = "<td></td><td></td><td class='details' colspan='4'>" + details + "</td>"
+                                if (hiddenTraceDiv.innerHTML.trim() == "")
+                                {
+                                    detailsRow.innerHTML = "<td></td><td></td><td class='details'>" + details + "<br></td><td colspan='3'>" + ss + "</td>"
+                                }
+                                else
+                                {
+                                    detailsRow.innerHTML = "<td></td><td></td><td class='details'>" + details + "<br><a onclick='toggleFuncTrace(" + id + ")'>-Trace-</a><br></td><td colspan='3'>" + ss + "</td>"
+                                }
                                 testResultRow.parentNode.insertBefore(detailsRow, testResultRow.nextSibling)
                             } else {
                                 // the details are already showing; hide them.
                                 detailsRow.parentNode.removeChild(detailsRow)
+                                
+                                // also hide trace if visible
+                                if (traceRow !== null) {
+                                    traceRow.parentNode.removeChild(traceRow)
+                                }
+                            }
+                        }
+                        
+                        function toggleFuncTrace(id) {
+                            // check to see if we are already showing the traceback
+                            var detailsRow = document.querySelector("tr[id='" + id + "-details']")
+                            var traceRow = document.querySelector("tr[id='" + id + "-trace']")
+                            var hiddenTraceDiv = document.querySelector("div[id='" + id + "-hidden-trace']")
+
+                            if (traceRow === null) {
+                                // the trace is hidden; show it.
+                                var trace = hiddenTraceDiv.innerHTML
+                                traceRow = document.createElement('tr')
+                                traceRow.setAttribute('id', id + "-trace")
+                                traceRow.innerHTML = "<td></td><td></td><td class='details' colspan='4'>" + trace + "</td>"
+                                detailsRow.parentNode.insertBefore(traceRow, detailsRow.nextSibling)
+                            } else {
+                                // the details are already showing; hide them.
+                                traceRow.parentNode.removeChild(traceRow)
                             }
                         }
 
@@ -137,14 +175,33 @@ class HTMLWriter():
             <br />""" % (successes, failures, skipped)
 
         # Group tests by class and environment
-        tests_by_class = {}
+        
+        #AB - changed to ordered collection for properly ordered output
+        #tests_by_class = {}
+        tests_by_class = OrderedDict({})
+        tests_by_env = OrderedDict({})
         for result in results:
-            tests_by_env = tests_by_class.get(result.full_class_name(), {})
+            #AB - added variable for extra sorting by run group
+            rungroup = 0
+            if('group' in result.configuration.keys()):
+                rungroup = result.configuration["group"]
+            
+            #AB - added if clause for extra sorting by run group
+            if(rungroup != 0):
+                tests_by_env = tests_by_class.get(result.full_class_name_with_group(), {})
+            else:
+                tests_by_env = tests_by_class.get(result.full_class_name(), {})
+            
             env_str = HTMLWriter.hashable(result.environment)
             results = tests_by_env.get(env_str, []) 
             results.append(result)
             tests_by_env[env_str] = results
-            tests_by_class[result.full_class_name()] = tests_by_env
+            
+            #AB - added if clause for extra sorting by run group
+            if(rungroup != 0):
+                tests_by_class[result.full_class_name_with_group()] = tests_by_env
+            else:
+                tests_by_class[result.full_class_name()] = tests_by_env
 
         html += "<table class='results-table'>"
 
@@ -212,6 +269,28 @@ class HTMLWriter():
                         traceback_str = cgi.escape(result.traceback)
                         traceback_str = traceback_str.replace(' ', '&nbsp;')
                         traceback_str = traceback_str.replace('\n', '<br />')
+                        
+                    # Format the details
+                    details_str = ""
+                    if result.details:
+                        details_str = cgi.escape(result.details)
+                        details_str = details_str.replace(' ', '&nbsp;')
+                        details_str = details_str.replace('\n', '<br />')
+                        
+                    # Check for screenshot
+                    ss_link = ""
+                    if result.ss_loc:
+                        ss_link = ss_link = '<a href="./' + result.ss_loc + '" target="_blank"><img src="./' + result.ss_loc + '" width="300"></a>'
+                        
+                    #func_str = class_name + "." + result.func.__name__
+                    # remove group prefix if present
+                    #if(func_str.count(".") > 2):
+                    #    intStart = func_str.find(".") + 1
+                    #    func_str = func_str[intStart:]
+                    
+                    #import os.path
+                    #if(os.path.isfile(os.path.dirname(fp.name) + "/" + func_str + ".png")):
+                    #    ss_link = '<a href="./' + func_str + '.png" target="_blank"><img src="./' + func_str + '.png" width="300"></a>'
 
                     # Format the resource_groups
                     def print_resource_groups(rgroup):
@@ -221,6 +300,15 @@ class HTMLWriter():
                             return str(rgroup)
                     resource_group_str = map(print_resource_groups, result.resource_groups)
 
+                    #AB - Clean up output: removing Resource, Execution groups. add space before error
+                    #Resource Groups: %s<br/>
+                    #Execution Groups: %s<br/>
+                    
+                    #AB - Use HTMLParser to cleanup traceback
+                    import HTMLParser
+                    html_parser = HTMLParser.HTMLParser()
+
+                    #AB - Added second div to provide expandable traceback
                     row = """
                         <tr id="%s-result" class="test-result" style="display:none">
                             <td class='empty-cell'></td>
@@ -233,11 +321,15 @@ class HTMLWriter():
                             </td>
                             <td style="display:none">
                                 <div id="%s-hidden-details" class='details'>
-                                    Resource Groups: %s<br/>
-                                    Execution Groups: %s<br/>
                                     Start Time: %s<br />
                                     End Time: %s<br />
-                                    Duration: %s<br />
+                                    Duration: %s<br /><br />
+                                    %s
+                                </div>
+                                <div id="%s-hidden-ss" class='details'>
+                                    %s
+                                </div>
+                                <div id="%s-hidden-trace" class='details'>
                                     %s
                                 </div>
                             </td>
@@ -249,12 +341,17 @@ class HTMLWriter():
                                result.thread + 1, 
                                i, 
                                i, 
-                               resource_group_str, 
-                               result.execution_groups, 
+                               #resource_group_str, 
+                               #result.execution_groups, 
                                result.start_time.strftime("%m-%d-%y %H:%M:%S"),
                                result.end_time.strftime("%m-%d-%y %H:%M:%S"),
                                str(result.end_time - result.start_time),
-                               traceback_str)
+                               #AB - cleanup to allow links to display correctly
+                               html_parser.unescape(details_str).replace(u'\xa0', ' '),
+                               i,
+                               ss_link,
+                               i,
+                               html_parser.unescape(traceback_str).replace(u'\xa0', ' '))
 
                     html += row
                     i += 1
@@ -295,13 +392,13 @@ class HTMLLogger(TestLogger):
     failed_test_count = None
     lock = None
 
-    def __init__(self, log_dir=None, log_level=LogLevel.ERROR, css_path=None):
+    def __init__(self, log_dir=None, log_level=LogLevel.ERROR, css_path=None, log_screen=LogScreen.NONE):
         if log_dir: 
             log_dir = os.path.abspath(log_dir)
         if css_path: 
             css_path = os.path.abspath(css_path) 
 
-        TestLogger.__init__(self, log_dir=log_dir, log_level=log_level)
+        TestLogger.__init__(self, log_dir=log_dir, log_level=log_level, log_screen=log_screen)
         self.css_path = css_path
         self.failed_test_count = 0
         self.lock = Lock()
@@ -312,7 +409,11 @@ class HTMLLogger(TestLogger):
         # Set up the log file
         self.start_time = datetime.datetime.now()
         self.log_dir = self.log_dir.rstrip(os.sep)
-        self.test_title = "Test Run %s" % self.start_time.strftime("%m-%d-%y %H:%M:%S")
+        
+        #AB - change folder name to reflect script name
+        #self.test_title = "Test Run %s" % self.start_time.strftime("%m-%d-%y %H:%M:%S")
+        self.test_title = sys.argv[2].split("\\")[-1].replace(".json","") + " %s" % self.start_time.strftime("%m-%d-%y %H:%M:%S")
+        
         self.log_dir += "%s%s" % (os.sep, self.test_title.replace(':', '.'))
         os.mkdir(self.log_dir)
         log_name = "%s%sresults.html" % (self.log_dir, os.sep)
@@ -335,6 +436,13 @@ class HTMLLogger(TestLogger):
             css_path="style.css" # <-- this is hardcoded to work around a bug in Firefox on Windows where CSS loaded from the filesystem must use a relative path.
         )
 
+        #AB - open test results after done writing
+        self.out.close()
+        
+        if self.log_display:
+            from selenium import webdriver
+            webdriver.Firefox().get("file://" + self.log_dir + "/results.html")
+
         return self.failed_test_count
 
     def runningTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
@@ -352,8 +460,9 @@ class HTMLLogger(TestLogger):
                 if not result.status: result.status = TestResultType.SUCCESS
                 self.results.put(result)
 
-        if self.log_level >= LogLevel.DEBUG:
-            self.log_debug_info(class_instance, func)
+        #AB - removed for now due to change in LogLevel structure
+        #if self.log_level >= LogLevel.DEBUG:
+        #    self.log_debug_info(class_instance, func)
 
     def skippingTestFunction(self, class_instance, func, func_type=TestFunctionType.TEST, thread_num=None):
         # Don't log results for setup and teardown unless they fail
@@ -370,7 +479,31 @@ class HTMLLogger(TestLogger):
             result = self.current_tests[(class_instance, func, thread_num)]
         result.status = TestResultType.FAILURE
         result.error = e
+        
         result.traceback = tb
+        
+        #AB - populate details
+        #if self.log_level == LogLevel.DEBUG:
+        if(tb.split("\n").pop(-2).find("AssertionError: ") == 0):
+            result.details = "<b>" + tb.split("\n").pop(-2).replace("AssertionError: ","") + "</b>"
+        else:
+            result.details = "<b>" + tb.split("\n").pop(-2) + "</b>"
 
-        if self.log_level >= LogLevel.INFO:
-            self.log_debug_info(class_instance, func)
+        #if self.log_level >= LogLevel.INFO:
+        if self.log_screen == LogScreen.ERROR or (e == AssertionError and self.log_screen == LogScreen.ASSERT):
+            result.ss_loc = self.log_debug_info(class_instance, func)
+            
+            #AB - added screenshot to log
+            #func_str = TestLogger.format_function_name(class_instance, func)
+            #path = self.log_dir if self.log_dir else "."
+            #result.traceback += """\n <img src="%s/%s.png">""" % (path, func_str)
+
+    #AB - additional logging options
+    def logDetails(self, class_instance, func, str_details, thread_num=None):
+        result = self.current_tests[(class_instance, func, thread_num)]
+        
+        if result.status == TestResultType.FAILURE:
+            result.details = str_details + "\n\n" + result.details
+        else:
+            result.details = str_details
+            result.ss_loc = self.log_debug_info(class_instance, func)

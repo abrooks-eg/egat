@@ -12,9 +12,12 @@ class TestResult():
     traceback = None
     start_time = None
     end_time = None
+    #AB - adding details variable as a way to provide feedback without full traceback
+    details = None
+    ss_loc = None
 
     def __init__(self, class_instance, func, thread=None, status=None, 
-                 exception=None, traceback=None, start_time=None, end_time=None):
+                 exception=None, traceback=None, start_time=None, end_time=None, details=None):
         self.class_ = class_instance.__class__
         self.func = func
         self.environment = getattr(class_instance, 'environment', {})
@@ -28,11 +31,18 @@ class TestResult():
         self.status = status
         self.exception = exception
         self.traceback = traceback
+        self.details = details
 
     def full_class_name(self):
         """Takes a class instance and a function from that class and returns the fully 
         qualified class name as a string."""
         return "%s.%s" % (self.func.__module__, self.class_.__name__)
+    
+    #AB - adding run group for better sorting
+    def full_class_name_with_group(self):
+        """Takes a class instance and a function from that class and returns the fully 
+        qualified class name as a string."""
+        return "%s.%s.%s" % (self.configuration["group"], self.func.__module__, self.class_.__name__)
 
     def environment_string(self):
         """Returns a string representing this TestResult's environment."""

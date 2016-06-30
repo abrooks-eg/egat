@@ -1,9 +1,0 @@
-{
-    "options": {
-      "-l": "."
-    },
-    "tests": [
-        "examples.setup_examples.testsetup.TestSetupAndTeardown1",
-        "examples.setup_examples.testsetup.TestSetupAndTeardown2"
-    ]
-}

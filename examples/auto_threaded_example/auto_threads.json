@@ -1,9 +1,0 @@
-{
-  "options": {
-    "-t": 4,
-    "-l": "."
-  },
-  "tests": [
-    "examples.auto_threaded_example"
-  ]
-}

@@ -16,6 +16,7 @@ class TestSet():
     execution_order = ExecutionOrder.UNORDERED
     configuration = None
     environment = None
+    details = None
 
     @classmethod
     def load_tests(cls):
@@ -48,6 +49,19 @@ class TestSet():
         """Asserts that the condition passed into 'boolean_expression' is true and raises the
         error message specified by 'error_message' if it is false."""
         assert boolean_expression, error_message
+        
+    #AB - additional logging options
+    @classmethod
+    def log(cls, str_info):
+        if cls.details == None:
+            cls.details = str_info
+        else:
+            cls.details += "\n"
+            cls.details += str_info
+    
+    @classmethod
+    def clearLog(cls):
+        cls.details = None
         
 class SequentialTestSet(TestSet):
     """A TestSet whose tests are called in the order they are written (by line 

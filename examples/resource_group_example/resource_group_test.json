@@ -1,9 +1,0 @@
-{
-  "options": {
-    "-t": 2,
-    "-l": "."
-  },
-  "tests": [
-    "examples.resource_group_example"
-  ]
-}

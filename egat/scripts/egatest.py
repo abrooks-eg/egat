@@ -17,6 +17,7 @@ def run():
         "environments": getattr(args, 'environments', []),
     }
     log_level = args.log_level
+    log_screen = args.log_screen
 
     # Set up the TestRunner and TestLogger
     if args.log:
@@ -24,10 +25,17 @@ def run():
     else:
         logger = SimpleTextLogger()
     logger.set_log_level(log_level)
+    logger.set_log_scren(log_screen)
+    if(args.log_display):
+        logger.set_log_display(True)
 
     if args.user_defined_threads:
         runner = UserThreadedTestRunner(logger)
     else:
+        if args.number_of_threads == 0:
+            #AB assigns threads based on number of tests if 0 is provided
+            args.number_of_threads = len(args.tests)
+        
         runner = AutoThreadedTestRunner(
             logger, 
             args.number_of_threads, 

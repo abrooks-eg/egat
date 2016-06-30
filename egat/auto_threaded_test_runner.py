@@ -253,6 +253,12 @@ class AutoThreadedWorkerThread(WorkerThread):
         # Check for failed execution groups
         if WorkerThread.has_failed_ex_groups(node.test_class, func, node.test_env, self.work_provider):
             self.logger.skippingTestFunction(instance, func, func_type, thread_num=self.thread_num)
+            
+            #AB - still want to call teardown when threads has failed
+            if func_type == TestFunctionType.TEARDOWN:
+                func(instance)
+                node.test_class_is_torndown = True
+            
             return True
 
         # Try to lock this function's resources
@@ -275,6 +281,11 @@ class AutoThreadedWorkerThread(WorkerThread):
                 node.test_env
             )
             self.logger.foundException(instance, func, e, tb, func_type, thread_num=self.thread_num)
+
+        #AB - additional logging options
+        if instance.details != None:
+            self.logger.logDetails(instance, func, instance.details, thread_num=self.thread_num)
+            instance.clearLog()
 
         # Cleanup
         if func_type == TestFunctionType.SETUP:

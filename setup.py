@@ -13,7 +13,7 @@ import setuptools
 from distutils.core import setup
 setup(
     name = 'egat-NCAA',
-    packages = ['egat-NCAA'], # this must be the same as the name above
+    packages = ['egat-NCAA','egat-NCAA.loggers', 'egat-NCAA.scripts'], # this must be the same as the name above
     include_package_data=True,
     package_data = {
         'data': ['default.css', 'egat-header.png']

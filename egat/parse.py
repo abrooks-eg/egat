@@ -1,6 +1,7 @@
 import argparse
 import json
 from egat.loggers.test_logger import LogLevel
+from egat.loggers.test_logger import LogScreen
 
 class ParseError(Exception):
     pass
@@ -165,6 +166,23 @@ class ArgumentParser():
          default="ERROR",
          help="Sets the log level. Valid values are ERROR, INFO, and DEBUG. Defaults to ERROR.",
       )
+      
+      #AB - adding screen capture argument
+      parser.add_argument(
+         "--log-screen",
+         metavar="LOG_SCREEN",
+         choices=["ASSERT", "ERROR", "NONE"],
+         default="NONE",
+         help="Sets the screen capture logging. Valid values are NONE, ERROR, and ASSERT. Defaults to NONE.",
+      )
+      
+      #AB - adding log display argument
+      parser.add_argument(
+          "--log-display",
+          action='store_true',
+          help="""A flag that signals that the log is to be displayed to screen after
+          test completion."""
+      )
 
       parser.add_argument(
          'tests',
@@ -221,5 +239,14 @@ class ArgumentParser():
           args.log_level = LogLevel.DEBUG
       else:
           args.log_level = LogLevel.ERROR
+          
+      if args.log_screen == "NONE":
+          args.log_screen = LogScreen.NONE
+      elif args.log_screen == "ERROR":
+          args.log_screen = LogScreen.ERROR
+      elif args.log_screen == "ASSERT":
+          args.log_screen = LogScreen.ASSERT
+      else:
+          args.log_screen = LogScreen.NONE
 
       return args

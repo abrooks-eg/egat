@@ -13,7 +13,7 @@ import setuptools
 from distutils.core import setup
 setup(
     name = 'egat-NCAA',
-    packages = ['egat-NCAA','egat-NCAA.loggers', 'egat-NCAA.scripts'], # this must be the same as the name above
+    packages = ['egat','egat.loggers', 'egat.scripts'], # this must be the same as the name above
     include_package_data=True,
     package_data = {
         'data': ['default.css', 'egat-header.png']
@@ -21,7 +21,7 @@ setup(
     entry_points = {
         'console_scripts': ['egatest = egat.scripts.egatest:run']
     },
-    version = '1.0.2',
+    version = '1.0.2.2',
     description = 'An automated testing toolkit',
     author = 'E-gineering LLC',
     author_email = 'eg.pypi@e-gineering.com', # contact email
